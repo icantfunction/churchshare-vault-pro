@@ -46,7 +46,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return null;
     }
 
-    return data;
+    // Type assertion to ensure role matches our expected types
+    const role = data.role as 'Admin' | 'MinistryLeader' | 'Member';
+    
+    return {
+      id: data.id,
+      email: data.email,
+      role: role,
+      ministry_id: data.ministry_id
+    } as UserProfile;
   };
 
   useEffect(() => {
