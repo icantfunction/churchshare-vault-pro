@@ -10,12 +10,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Header = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { profile, signOut } = useAuth();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await signOut();
     toast({
       title: "Logged out",
       description: "Successfully logged out of ChurchShare Pro",
@@ -50,12 +53,14 @@ const Header = () => {
               />
             </div>
             
-            <Button asChild variant="outline" className="rounded-full">
-              <Link to="/upload">
-                <Upload className="h-4 w-4 mr-2" />
-                Upload
-              </Link>
-            </Button>
+            {(profile?.role === 'Admin' || profile?.role === 'MinistryLeader') && (
+              <Button asChild variant="outline" className="rounded-full">
+                <Link to="/upload">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload
+                </Link>
+              </Button>
+            )}
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -64,9 +69,15 @@ const Header = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem asChild>
-                  <Link to="/admin">Admin Panel</Link>
-                </DropdownMenuItem>
+                <div className="px-2 py-1 text-sm text-gray-600">
+                  {profile?.email}
+                  <div className="text-xs text-gray-400">{profile?.role}</div>
+                </div>
+                {profile?.role === 'Admin' && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin">Admin Panel</Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="h-4 w-4 mr-2" />
                   Logout
