@@ -19,6 +19,7 @@ export type Database = {
           id: string
           ministry_id: string | null
           notes: string | null
+          organisation_id: string | null
           uploader_id: string | null
         }
         Insert: {
@@ -30,6 +31,7 @@ export type Database = {
           id?: string
           ministry_id?: string | null
           notes?: string | null
+          organisation_id?: string | null
           uploader_id?: string | null
         }
         Update: {
@@ -41,6 +43,7 @@ export type Database = {
           id?: string
           ministry_id?: string | null
           notes?: string | null
+          organisation_id?: string | null
           uploader_id?: string | null
         }
         Relationships: [
@@ -52,10 +55,52 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "files_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "files_uploader_id_fkey"
             columns: ["uploader_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invites: {
+        Row: {
+          code: string
+          expires_at: string | null
+          max_uses: number | null
+          organisation_id: string | null
+          role: string | null
+          uses: number | null
+        }
+        Insert: {
+          code: string
+          expires_at?: string | null
+          max_uses?: number | null
+          organisation_id?: string | null
+          role?: string | null
+          uses?: number | null
+        }
+        Update: {
+          code?: string
+          expires_at?: string | null
+          max_uses?: number | null
+          organisation_id?: string | null
+          role?: string | null
+          uses?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invites_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
         ]
@@ -65,36 +110,80 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          organisation_id: string | null
         }
         Insert: {
           description?: string | null
           id?: string
           name: string
+          organisation_id?: string | null
         }
         Update: {
           description?: string | null
           id?: string
           name?: string
+          organisation_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ministries_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organisations: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string | null
         }
         Relationships: []
       }
       users: {
         Row: {
+          dob: string | null
           email: string
+          first_name: string | null
           id: string
+          is_director: boolean | null
+          last_name: string | null
           ministry_id: string | null
+          organisation_id: string | null
           role: string | null
         }
         Insert: {
+          dob?: string | null
           email: string
+          first_name?: string | null
           id: string
+          is_director?: boolean | null
+          last_name?: string | null
           ministry_id?: string | null
+          organisation_id?: string | null
           role?: string | null
         }
         Update: {
+          dob?: string | null
           email?: string
+          first_name?: string | null
           id?: string
+          is_director?: boolean | null
+          last_name?: string | null
           ministry_id?: string | null
+          organisation_id?: string | null
           role?: string | null
         }
         Relationships: [
@@ -103,6 +192,13 @@ export type Database = {
             columns: ["ministry_id"]
             isOneToOne: false
             referencedRelation: "ministries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "users_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
         ]

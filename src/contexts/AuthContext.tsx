@@ -8,6 +8,11 @@ interface UserProfile {
   email: string;
   role: 'Admin' | 'MinistryLeader' | 'Member';
   ministry_id: string | null;
+  organisation_id: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  dob: string | null;
+  is_director: boolean | null;
 }
 
 interface AuthContextType {
@@ -46,14 +51,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return null;
     }
 
-    // Type assertion to ensure role matches our expected types
-    const role = data.role as 'Admin' | 'MinistryLeader' | 'Member';
-    
     return {
       id: data.id,
       email: data.email,
-      role: role,
-      ministry_id: data.ministry_id
+      role: data.role as 'Admin' | 'MinistryLeader' | 'Member',
+      ministry_id: data.ministry_id,
+      organisation_id: data.organisation_id,
+      first_name: data.first_name,
+      last_name: data.last_name,
+      dob: data.dob,
+      is_director: data.is_director
     } as UserProfile;
   };
 
