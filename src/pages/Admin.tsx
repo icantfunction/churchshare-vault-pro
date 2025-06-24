@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, Settings, BarChart3, Shield, Plus, Search, UserCheck, UserX, Crown } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Users, Building2, FileText, TrendingUp, Plus, Search, Edit, Trash2, Crown, UserCheck } from "lucide-react";
 import { useState } from "react";
 import { useDemoContext } from "@/contexts/DemoContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,19 +17,19 @@ const Admin = () => {
   const { isDemoMode, demoUsers, demoMinistries, demoFiles } = useDemoContext();
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
-  const [roleFilter, setRoleFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState("users");
 
   // Check if user has admin access
   const hasAdminAccess = isDemoMode || user?.role === 'Admin';
 
   if (!hasAdminAccess) {
     return (
-      <div className="min-h-screen bg-background font-poppins">
+      <div className="min-h-screen bg-gray-50 font-poppins">
         <Header />
         <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <Card className="shadow-lg border-0 text-center">
             <CardContent className="p-12">
-              <Shield className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <Users className="h-16 w-16 text-gray-400 mx-auto mb-4" />
               <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
               <p className="text-gray-600 mb-6">
                 You need administrator privileges to access this page.
@@ -75,23 +77,36 @@ const Admin = () => {
 
   const users = isDemoMode ? demoUsers : sampleUsers;
   const ministries = isDemoMode ? demoMinistries : [
-    { id: "youth", name: "Youth Ministry" },
-    { id: "worship", name: "Worship Team" },
-    { id: "children", name: "Children's Ministry" },
-    { id: "outreach", name: "Outreach Events" }
+    { id: "youth", name: "Youth Ministry", description: "Photos and videos from youth events and activities" },
+    { id: "worship", name: "Worship Team", description: "Performance recordings and event photography" },
+    { id: "children", name: "Children's Ministry", description: "Sunday school activities and special events" },
+    { id: "outreach", name: "Outreach Events", description: "Community service and evangelism activities" }
   ];
 
-  // Filter users
+  // Filter users based on search
   const filteredUsers = users.filter(user => {
-    const matchesSearch = !searchTerm || 
-      user.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesRole = roleFilter === "all" || user.role === roleFilter;
-    
-    return matchesSearch && matchesRole;
+    const fullName = `${user.first_name} ${user.last_name}`.toLowerCase();
+    const email = user.email.toLowerCase();
+    const search = searchTerm.toLowerCase();
+    return fullName.includes(search) || email.includes(search);
   });
+
+  // Calculate metrics
+  const totalUsers = users.length;
+  const totalMinistries = ministries.length;
+  const totalFiles = isDemoMode ? demoFiles.length : 445;
+  const storageUsed = isDemoMode ? "Demo Mode" : "2.4 GB";
+
+  const getRoleBadge = (role: string) => {
+    switch (role) {
+      case 'Admin':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'MinistryLeader':
+        return 'bg-blue-100 text-blue-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
 
   const getRoleIcon = (role: string) => {
     switch (role) {
@@ -104,225 +119,257 @@ const Admin = () => {
     }
   };
 
-  const getRoleBadgeColor = (role: string) => {
-    switch (role) {
-      case 'Admin':
-        return 'bg-red-100 text-red-800';
-      case 'MinistryLeader':
-        return 'bg-blue-100 text-blue-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
   const getMinistryName = (ministryId: string) => {
     return ministries.find(m => m.id === ministryId)?.name || ministryId;
   };
 
-  // Usage stats
-  const totalFiles = isDemoMode ? demoFiles.length : 445;
-  const totalUsers = users.length;
-  const totalMinistries = ministries.length;
-  const totalStorage = isDemoMode ? "Demo Mode" : "2.4 GB";
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const getFileCount = (ministryId: string) => {
+    if (isDemoMode) {
+      return demoFiles.filter(f => f.ministry_id === ministryId).length;
+    }
+    return Math.floor(Math.random() * 100) + 50; // Random for non-demo
+  };
 
   return (
-    <div className="min-h-screen bg-background font-poppins">
+    <div className="min-h-screen bg-gray-50 font-poppins">
       <Header />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Page Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Admin Dashboard
+            Admin Panel
             {isDemoMode && <Badge className="ml-2 bg-blue-100 text-blue-800">Demo Mode</Badge>}
           </h1>
           <p className="text-gray-600">Manage users, ministries, and system settings</p>
         </div>
 
-        {/* Usage Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-white shadow-lg border-0">
+        {/* KPI Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card className="bg-white shadow-sm border-0 rounded-xl">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-600 text-sm">Total Users</p>
+                  <p className="text-gray-600 text-sm font-medium mb-1">Total Users</p>
                   <p className="text-2xl font-bold text-gray-900">{totalUsers}</p>
                 </div>
-                <Users className="h-8 w-8 text-primary" />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-white shadow-lg border-0">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm">Total Files</p>
-                  <p className="text-2xl font-bold text-gray-900">{totalFiles}</p>
+                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                  <Users className="h-6 w-6 text-purple-500" />
                 </div>
-                <BarChart3 className="h-8 w-8 text-green-500" />
               </div>
             </CardContent>
           </Card>
           
-          <Card className="bg-white shadow-lg border-0">
+          <Card className="bg-white shadow-sm border-0 rounded-xl">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-600 text-sm">Ministries</p>
+                  <p className="text-gray-600 text-sm font-medium mb-1">Ministries</p>
                   <p className="text-2xl font-bold text-gray-900">{totalMinistries}</p>
                 </div>
-                <Settings className="h-8 w-8 text-purple-500" />
+                <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+                  <Building2 className="h-6 w-6 text-orange-500" />
+                </div>
               </div>
             </CardContent>
           </Card>
           
-          <Card className="bg-white shadow-lg border-0">
+          <Card className="bg-white shadow-sm border-0 rounded-xl">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-600 text-sm">Storage Used</p>
-                  <p className="text-2xl font-bold text-gray-900">{totalStorage}</p>
+                  <p className="text-gray-600 text-sm font-medium mb-1">Total Files</p>
+                  <p className="text-2xl font-bold text-gray-900">{totalFiles}</p>
                 </div>
-                <Shield className="h-8 w-8 text-orange-500" />
+                <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                  <FileText className="h-6 w-6 text-green-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-white shadow-sm border-0 rounded-xl">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-600 text-sm font-medium mb-1">Storage Used</p>
+                  <p className="text-2xl font-bold text-gray-900">{storageUsed}</p>
+                </div>
+                <div className="w-12 h-12 bg-violet-100 rounded-xl flex items-center justify-center">
+                  <TrendingUp className="h-6 w-6 text-violet-500" />
+                </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* User Management */}
-        <Card className="shadow-lg border-0 mb-8">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>User Management</CardTitle>
-                <CardDescription>Manage user accounts and permissions</CardDescription>
-              </div>
-              <Button className="rounded-xl">
-                <Plus className="h-4 w-4 mr-2" />
-                {isDemoMode ? "Add User (Demo)" : "Add User"}
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {/* Filters */}
-            <div className="flex flex-col md:flex-row gap-4 mb-6">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search users..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 h-12 rounded-xl"
-                />
-              </div>
-              
-              <Select value={roleFilter} onValueChange={setRoleFilter}>
-                <SelectTrigger className="w-full md:w-48 h-12 rounded-xl">
-                  <SelectValue placeholder="Filter by role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Roles</SelectItem>
-                  <SelectItem value="Admin">Admin</SelectItem>
-                  <SelectItem value="MinistryLeader">Ministry Leader</SelectItem>
-                  <SelectItem value="Member">Member</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+        {/* Segment Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-8 bg-gray-100 rounded-lg">
+            <TabsTrigger value="users" className="data-[state=active]:bg-white data-[state=active]:text-primary font-medium">
+              User Management
+            </TabsTrigger>
+            <TabsTrigger value="ministries" className="data-[state=active]:bg-white data-[state=active]:text-primary font-medium">
+              Ministry Management
+            </TabsTrigger>
+          </TabsList>
 
-            {/* User List */}
-            <div className="space-y-4">
-              {filteredUsers.map((user) => (
-                <div key={user.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-semibold">
-                      {user.first_name[0]}{user.last_name[0]}
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">{user.first_name} {user.last_name}</h3>
-                      <p className="text-sm text-gray-600">{user.email}</p>
-                      <p className="text-sm text-gray-500">{getMinistryName(user.ministry_id)}</p>
-                    </div>
+          {/* User Management Tab */}
+          <TabsContent value="users">
+            <Card className="bg-white shadow-sm border-0 rounded-xl">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>User Management</CardTitle>
+                    <CardDescription>Manage user accounts and permissions</CardDescription>
                   </div>
-                  
-                  <div className="flex items-center gap-4">
-                    <Badge className={`${getRoleBadgeColor(user.role)} border-0`}>
-                      {getRoleIcon(user.role)}
-                      <span className="ml-1">{user.role}</span>
-                    </Badge>
-                    
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" className="rounded-lg">
-                        Edit
-                      </Button>
-                      {user.role !== 'Admin' && (
-                        <Button variant="outline" size="sm" className="rounded-lg text-red-600 hover:text-red-700">
-                          <UserX className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
+                  <Button className="bg-primary hover:brightness-110 rounded-lg px-5 py-2">
+                    <Plus className="h-4 w-4 mr-2" />
+                    {isDemoMode ? "Add User (Demo)" : "Add User"}
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {/* Search Bar */}
+                <div className="mb-6">
+                  <div className="relative max-w-md">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Input
+                      placeholder="Search users..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10 h-11 rounded-lg"
+                    />
                   </div>
                 </div>
-              ))}
-            </div>
 
-            {filteredUsers.length === 0 && (
-              <div className="text-center py-8">
-                <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">No users found matching your criteria</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                {/* Users Table */}
+                <div className="rounded-lg border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>User</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Ministry</TableHead>
+                        <TableHead>Join Date</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredUsers.map((user) => (
+                        <TableRow key={user.id} className="hover:bg-gray-50">
+                          <TableCell>
+                            <div>
+                              <div className="font-semibold">{user.first_name} {user.last_name}</div>
+                              <div className="text-sm text-gray-500">{user.email}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={`${getRoleBadge(user.role)} border-0`}>
+                              {getRoleIcon(user.role)}
+                              <span className="ml-1">{user.role}</span>
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{getMinistryName(user.ministry_id)}</TableCell>
+                          <TableCell>{formatDate(user.created_at)}</TableCell>
+                          <TableCell>
+                            <Badge className="bg-green-100 text-green-800 border-0">Active</Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              {user.role !== 'Admin' && (
+                                <Button variant="outline" size="sm" className="h-8 w-8 p-0 text-red-600 hover:text-red-700">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
 
-        {/* Ministry Management */}
-        <Card className="shadow-lg border-0">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Ministry Management</CardTitle>
-                <CardDescription>Manage ministry groups and permissions</CardDescription>
-              </div>
-              <Button className="rounded-xl">
-                <Plus className="h-4 w-4 mr-2" />
-                {isDemoMode ? "Add Ministry (Demo)" : "Add Ministry"}
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {ministries.map((ministry) => {
-                const userCount = users.filter(u => u.ministry_id === ministry.id).length;
-                const fileCount = isDemoMode ? 
-                  demoFiles.filter(f => f.ministry_id === ministry.id).length : 
-                  Math.floor(Math.random() * 100) + 50;
-                
-                return (
-                  <Card key={ministry.id} className="border border-gray-200">
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-semibold text-lg">{ministry.name}</h3>
-                        <Button variant="outline" size="sm" className="rounded-lg">
-                          Edit
-                        </Button>
-                      </div>
-                      
-                      <div className="space-y-2 text-sm text-gray-600">
-                        <div className="flex justify-between">
-                          <span>Users:</span>
-                          <span>{userCount}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Files:</span>
-                          <span>{fileCount}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+                {filteredUsers.length === 0 && (
+                  <div className="text-center py-8">
+                    <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600">No users found matching your search</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Ministry Management Tab */}
+          <TabsContent value="ministries">
+            <Card className="bg-white shadow-sm border-0 rounded-xl">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Ministry Management</CardTitle>
+                    <CardDescription>Manage ministry groups and settings</CardDescription>
+                  </div>
+                  <Button className="bg-primary hover:brightness-110 rounded-lg px-5 py-2">
+                    <Plus className="h-4 w-4 mr-2" />
+                    {isDemoMode ? "Add Ministry (Demo)" : "Add Ministry"}
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {/* Ministries Table */}
+                <div className="rounded-lg border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead>File Count</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {ministries.map((ministry) => (
+                        <TableRow key={ministry.id} className="hover:bg-gray-50">
+                          <TableCell className="font-semibold">{ministry.name}</TableCell>
+                          <TableCell className="max-w-xs">
+                            <div className="truncate" title={ministry.description}>
+                              {ministry.description && ministry.description.length > 80 
+                                ? ministry.description.substring(0, 80) + "..." 
+                                : ministry.description}
+                            </div>
+                          </TableCell>
+                          <TableCell>{getFileCount(ministry.id)}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button variant="outline" size="sm" className="h-8 w-8 p-0 text-red-600 hover:text-red-700">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
