@@ -7,7 +7,11 @@ import { useDemoContext } from "@/contexts/DemoContext";
 import { Link } from "react-router-dom";
 
 const DemoFiles = () => {
-  const { demoFiles, clearDemoFiles } = useDemoContext();
+  const { demoFiles, clearDemoFiles, demoMinistries } = useDemoContext();
+
+  // Calculate user-uploaded files (excluding sample files)
+  const sampleFileIds = ['demo-file-1', 'demo-file-2', 'demo-file-3', 'demo-file-4'];
+  const userUploadedFiles = demoFiles.filter(file => !sampleFileIds.includes(file.id));
 
   const getFileIcon = (fileType: string) => {
     if (fileType.startsWith('image/')) {
@@ -28,13 +32,8 @@ const DemoFiles = () => {
   };
 
   const getMinistryName = (ministryId: string) => {
-    const ministryNames: Record<string, string> = {
-      'youth': 'Youth Ministry',
-      'worship': 'Worship Team',
-      'children': "Children's Ministry",
-      'outreach': 'Outreach Events'
-    };
-    return ministryNames[ministryId] || ministryId;
+    const ministry = demoMinistries.find(m => m.id === ministryId);
+    return ministry ? ministry.name : ministryId;
   };
 
   return (
@@ -53,7 +52,7 @@ const DemoFiles = () => {
               <h1 className="text-2xl font-bold text-primary">ChurchShare Pro - Demo Files</h1>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">Demo Mode: {demoFiles.length}/2 files</span>
+              <span className="text-sm text-gray-600">Demo Mode: {userUploadedFiles.length}/2 files</span>
               <Button asChild>
                 <Link to="/auth">Sign Up for Full Access</Link>
               </Button>
@@ -69,7 +68,7 @@ const DemoFiles = () => {
             <p className="text-gray-600">Your demo files are stored locally in your browser</p>
           </div>
           <div className="flex gap-4">
-            {demoFiles.length < 2 && (
+            {userUploadedFiles.length < 2 && (
               <Button asChild>
                 <Link to="/demo/upload">
                   <Upload className="h-4 w-4 mr-2" />

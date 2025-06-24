@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Shield, Upload, Users, Zap } from "lucide-react";
+import { Shield, Upload, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useDemoContext } from "@/contexts/DemoContext";
 import { useEffect } from "react";
@@ -49,12 +49,10 @@ const Index = () => {
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
           <h2 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
-            Simple, Secure File Sharing for 
-            <span className="text-primary"> Churches</span>
+            ChurchShare Pro
           </h2>
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            Share photos, videos, and documents across your ministry teams with 
-            enterprise-grade security and intuitive organization.
+            Simple, secure file sharing for churches and creative ministries. Upload and share high-quality photos without compression.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button asChild size="lg" className="h-14 px-8 text-lg rounded-xl">
@@ -73,27 +71,27 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Features Section */}
+      {/* Main Features Section */}
       <section className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h3 className="text-3xl font-bold text-gray-900 mb-4">
-              Everything Your Ministry Needs
+              Built for Ministry Excellence
             </h3>
             <p className="text-lg text-gray-600">
-              Built specifically for churches and creative ministries
+              Everything your church needs to manage and share files securely
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <Card className="text-center border-0 shadow-lg">
               <CardHeader>
                 <Shield className="h-12 w-12 text-primary mx-auto mb-4" />
-                <CardTitle>Secure Sharing</CardTitle>
+                <CardTitle>Secure & Private</CardTitle>
               </CardHeader>
               <CardContent>
                 <CardDescription>
-                  Enterprise-grade security with role-based access controls
+                  Role-based permissions ensure only authorized ministry members can access files.
                 </CardDescription>
               </CardContent>
             </Card>
@@ -101,11 +99,11 @@ const Index = () => {
             <Card className="text-center border-0 shadow-lg">
               <CardHeader>
                 <Upload className="h-12 w-12 text-secondary mx-auto mb-4" />
-                <CardTitle>Easy Upload</CardTitle>
+                <CardTitle>High-Quality Uploads</CardTitle>
               </CardHeader>
               <CardContent>
                 <CardDescription>
-                  Drag-and-drop large files with progress tracking
+                  Upload photos and files without compression. Original quality preserved.
                 </CardDescription>
               </CardContent>
             </Card>
@@ -113,23 +111,11 @@ const Index = () => {
             <Card className="text-center border-0 shadow-lg">
               <CardHeader>
                 <Users className="h-12 w-12 text-green-500 mx-auto mb-4" />
-                <CardTitle>Ministry Teams</CardTitle>
+                <CardTitle>Ministry Organization</CardTitle>
               </CardHeader>
               <CardContent>
                 <CardDescription>
-                  Organize by ministries with proper permissions
-                </CardDescription>
-              </CardContent>
-            </Card>
-
-            <Card className="text-center border-0 shadow-lg">
-              <CardHeader>
-                <Zap className="h-12 w-12 text-purple-500 mx-auto mb-4" />
-                <CardTitle>Fast Access</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription>
-                  Quick search and smart organization for instant access
+                  Organize files by ministry and events. Easy to find what you need.
                 </CardDescription>
               </CardContent>
             </Card>
