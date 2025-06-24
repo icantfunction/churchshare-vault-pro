@@ -23,10 +23,20 @@ export const useRealtimeKPIs = () => {
     if (!profile?.organisation_id) return;
 
     try {
-      const { data, error } = await supabase
+      // For admins/directors, show all org files. For others, show only their files
+      const isAdmin = profile.role === 'Admin' || profile.is_director;
+      
+      let query = supabase
         .from('files')
-        .select('created_at')
+        .select('created_at, uploader_id')
         .eq('organisation_id', profile.organisation_id);
+
+      // If not admin, filter to only user's files
+      if (!isAdmin) {
+        query = query.eq('uploader_id', profile.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -80,7 +90,7 @@ export const useRealtimeKPIs = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [profile?.organisation_id]);
+  }, [profile?.organisation_id, profile?.role, profile?.is_director]);
 
   return { kpiData, refreshKPIs };
 };

@@ -79,7 +79,7 @@ const Dashboard = () => {
             <div className="flex justify-between items-center py-6">
               <div>
                 <Link to="/" className="text-2xl font-bold text-primary">
-                  ChurchShare Pro
+                  ChurchShare
                 </Link>
                 <p className="mt-1 text-sm text-gray-500">
                   Welcome back, {profile?.first_name} {profile?.last_name}

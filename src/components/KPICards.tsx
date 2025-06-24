@@ -2,6 +2,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Files, HardDrive, TrendingUp } from "lucide-react";
 import { useRealtimeKPIs } from "@/hooks/useRealtimeKPIs";
+import { useAuth } from "@/contexts/AuthContext";
 
 const formatFileSize = (bytes: number) => {
   if (bytes === 0) return '0 Bytes';
@@ -13,26 +14,29 @@ const formatFileSize = (bytes: number) => {
 
 const KPICards = () => {
   const { kpiData } = useRealtimeKPIs();
+  const { profile } = useAuth();
+  
+  const isAdmin = profile?.role === 'Admin' || profile?.is_director;
 
   const cards = [
     {
-      title: "Total Files",
+      title: isAdmin ? "Total Files" : "My Files",
       value: kpiData.loading ? "..." : kpiData.totalFiles.toString(),
-      description: "Files in your organization",
+      description: isAdmin ? "Files in your organization" : "Files you've uploaded",
       icon: Files,
       color: "text-blue-600"
     },
     {
-      title: "Storage Used",
+      title: isAdmin ? "Organization Storage" : "My Storage Used",
       value: kpiData.loading ? "..." : formatFileSize(kpiData.totalSize),
-      description: "Total storage consumed",
+      description: isAdmin ? "Total storage consumed" : "Your storage usage",
       icon: HardDrive,
       color: "text-green-600"
     },
     {
       title: "Recent Activity",
       value: kpiData.loading ? "..." : kpiData.recentFiles.toString(),
-      description: "Files added this week",
+      description: isAdmin ? "Files added this week" : "Your files added this week",
       icon: TrendingUp,
       color: "text-purple-600"
     }

@@ -32,7 +32,7 @@ const Index = () => {
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center">
               <h1 className="text-3xl font-bold">
-                Church<span className="bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">Share</span> Pro
+                Church<span className="bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">Share</span>
               </h1>
             </div>
             <div className="flex items-center space-x-4">
@@ -51,7 +51,7 @@ const Index = () => {
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
           <h2 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
-            Church<span className="bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">Share</span> Pro
+            Church<span className="bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">Share</span>
           </h2>
           <p className="text-xl text-gray-600 mb-12 max-w-3xl mx-auto leading-relaxed">
             Simple, secure file sharing for churches and creative ministries. Upload and share high-quality photos without compression.
@@ -131,7 +131,7 @@ const Index = () => {
       <footer className="bg-gray-900/95 backdrop-blur-sm text-white py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h4 className="text-2xl font-bold mb-4">
-            Church<span className="bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">Share</span> Pro
+            Church<span className="bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">Share</span>
           </h4>
           <p className="text-gray-400">
             Secure, simple file sharing for churches and creative ministries

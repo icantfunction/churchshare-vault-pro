@@ -40,7 +40,7 @@ const Header = () => {
           {/* Left: Logotype */}
           <div className="flex items-center">
             <Link to="/dashboard" className="text-2xl font-bold text-primary flex items-center">
-              ChurchShare Pro
+              ChurchShare
               <div className="w-2 h-2 bg-secondary rounded-full ml-1 mt-1"></div>
             </Link>
           </div>
