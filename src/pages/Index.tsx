@@ -3,8 +3,27 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, Upload, Users, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useDemoContext } from "@/contexts/DemoContext";
+import { useEffect } from "react";
 
 const Index = () => {
+  const { setDemoMode } = useDemoContext();
+
+  const handleViewDemo = () => {
+    setDemoMode(true);
+  };
+
+  // Reset demo mode when leaving the landing page to regular auth flow
+  useEffect(() => {
+    return () => {
+      // Don't reset demo mode if navigating to demo pages
+      const isDemoPath = window.location.pathname.startsWith('/demo');
+      if (!isDemoPath) {
+        setDemoMode(false);
+      }
+    };
+  }, [setDemoMode]);
+
   return (
     <div className="min-h-screen bg-background font-poppins">
       {/* Header */}
@@ -41,8 +60,14 @@ const Index = () => {
             <Button asChild size="lg" className="h-14 px-8 text-lg rounded-xl">
               <Link to="/auth">Start Free Trial</Link>
             </Button>
-            <Button asChild variant="outline" size="lg" className="h-14 px-8 text-lg rounded-xl">
-              <Link to="/auth">View Demo</Link>
+            <Button 
+              asChild 
+              variant="outline" 
+              size="lg" 
+              className="h-14 px-8 text-lg rounded-xl"
+              onClick={handleViewDemo}
+            >
+              <Link to="/demo/files">View Demo</Link>
             </Button>
           </div>
         </div>
