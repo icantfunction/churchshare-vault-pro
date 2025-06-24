@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 interface DemoFile {
@@ -30,6 +29,7 @@ interface DemoUser {
   first_name: string;
   last_name: string;
   ministry_id: string;
+  created_at: string;
 }
 
 interface DemoContextType {
@@ -94,7 +94,8 @@ const sampleUsers: DemoUser[] = [
     role: 'Admin',
     first_name: 'Demo',
     last_name: 'User',
-    ministry_id: 'youth'
+    ministry_id: 'youth',
+    created_at: '2024-01-15T10:00:00Z'
   },
   {
     id: 'demo-user-2',
@@ -102,7 +103,8 @@ const sampleUsers: DemoUser[] = [
     role: 'MinistryLeader',
     first_name: 'Sarah',
     last_name: 'Johnson',
-    ministry_id: 'youth'
+    ministry_id: 'youth',
+    created_at: '2024-02-01T14:30:00Z'
   },
   {
     id: 'demo-user-3',
@@ -110,7 +112,8 @@ const sampleUsers: DemoUser[] = [
     role: 'Member',
     first_name: 'Mike',
     last_name: 'Wilson',
-    ministry_id: 'worship'
+    ministry_id: 'worship',
+    created_at: '2024-02-10T09:15:00Z'
   }
 ];
 
