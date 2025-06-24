@@ -2,91 +2,128 @@
 import Header from "@/components/Header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, Building2, Files, TrendingUp, Plus, Edit, Trash2, Crown, User, UserCheck } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Users, Settings, BarChart3, Shield, Plus, Search, UserCheck, UserX, Crown } from "lucide-react";
+import { useState } from "react";
+import { useDemoContext } from "@/contexts/DemoContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { Link } from "react-router-dom";
 
 const Admin = () => {
-  const users = [
+  const { isDemoMode, demoUsers, demoMinistries, demoFiles } = useDemoContext();
+  const { user } = useAuth();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+
+  // Check if user has admin access
+  const hasAdminAccess = isDemoMode || user?.role === 'Admin';
+
+  if (!hasAdminAccess) {
+    return (
+      <div className="min-h-screen bg-background font-poppins">
+        <Header />
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <Card className="shadow-lg border-0 text-center">
+            <CardContent className="p-12">
+              <Shield className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
+              <p className="text-gray-600 mb-6">
+                You need administrator privileges to access this page.
+              </p>
+              <Button asChild>
+                <Link to="/dashboard">Return to Dashboard</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
+
+  // Sample users for non-demo mode
+  const sampleUsers = [
     {
-      id: 1,
-      name: "Sarah Johnson",
-      email: "sarah@church.org",
+      id: "1",
+      email: "admin@church.com",
       role: "Admin",
-      ministry: "Youth Ministry",
-      joinDate: "2024-01-15",
-      status: "active",
+      first_name: "Church",
+      last_name: "Admin",
+      ministry_id: "youth",
+      created_at: "2024-01-15T10:00:00Z"
     },
     {
-      id: 2,
-      name: "Mike Wilson",
-      email: "mike@church.org",
-      role: "Ministry Leader",
-      ministry: "Worship Team",
-      joinDate: "2024-02-01",
-      status: "active",
+      id: "2", 
+      email: "sarah@church.com",
+      role: "MinistryLeader",
+      first_name: "Sarah",
+      last_name: "Johnson",
+      ministry_id: "youth",
+      created_at: "2024-02-01T14:30:00Z"
     },
     {
-      id: 3,
-      name: "Lisa Chen",
-      email: "lisa@church.org",
+      id: "3",
+      email: "mike@church.com", 
       role: "Member",
-      ministry: "Children's Ministry",
-      joinDate: "2024-02-15",
-      status: "active",
-    },
+      first_name: "Mike",
+      last_name: "Wilson",
+      ministry_id: "worship",
+      created_at: "2024-02-10T09:15:00Z"
+    }
   ];
 
-  const ministries = [
-    {
-      id: 1,
-      name: "Youth Ministry",
-      description: "Engaging teenagers in faith and community",
-      leader: "Sarah Johnson",
-      members: 24,
-      files: 127,
-    },
-    {
-      id: 2,
-      name: "Worship Team",
-      description: "Leading the congregation in worship",
-      leader: "Mike Wilson",
-      members: 12,
-      files: 89,
-    },
-    {
-      id: 3,
-      name: "Children's Ministry",
-      description: "Nurturing young hearts for Jesus",
-      leader: "Lisa Chen",
-      members: 18,
-      files: 156,
-    },
+  const users = isDemoMode ? demoUsers : sampleUsers;
+  const ministries = isDemoMode ? demoMinistries : [
+    { id: "youth", name: "Youth Ministry" },
+    { id: "worship", name: "Worship Team" },
+    { id: "children", name: "Children's Ministry" },
+    { id: "outreach", name: "Outreach Events" }
   ];
+
+  // Filter users
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = !searchTerm || 
+      user.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesRole = roleFilter === "all" || user.role === roleFilter;
+    
+    return matchesSearch && matchesRole;
+  });
 
   const getRoleIcon = (role: string) => {
     switch (role) {
       case 'Admin':
-        return <Crown className="h-4 w-4 text-yellow-500" />;
-      case 'Ministry Leader':
-        return <UserCheck className="h-4 w-4 text-blue-500" />;
+        return <Crown className="h-4 w-4" />;
+      case 'MinistryLeader':
+        return <UserCheck className="h-4 w-4" />;
       default:
-        return <User className="h-4 w-4 text-gray-500" />;
+        return <Users className="h-4 w-4" />;
     }
   };
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case 'Admin':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'Ministry Leader':
+        return 'bg-red-100 text-red-800';
+      case 'MinistryLeader':
         return 'bg-blue-100 text-blue-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
   };
+
+  const getMinistryName = (ministryId: string) => {
+    return ministries.find(m => m.id === ministryId)?.name || ministryId;
+  };
+
+  // Usage stats
+  const totalFiles = isDemoMode ? demoFiles.length : 445;
+  const totalUsers = users.length;
+  const totalMinistries = ministries.length;
+  const totalStorage = isDemoMode ? "Demo Mode" : "2.4 GB";
 
   return (
     <div className="min-h-screen bg-background font-poppins">
@@ -94,18 +131,21 @@ const Admin = () => {
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Panel</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Admin Dashboard
+            {isDemoMode && <Badge className="ml-2 bg-blue-100 text-blue-800">Demo Mode</Badge>}
+          </h1>
           <p className="text-gray-600">Manage users, ministries, and system settings</p>
         </div>
 
-        {/* Overview Stats */}
+        {/* Usage Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card className="bg-white shadow-lg border-0">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 text-sm">Total Users</p>
-                  <p className="text-2xl font-bold text-gray-900">54</p>
+                  <p className="text-2xl font-bold text-gray-900">{totalUsers}</p>
                 </div>
                 <Users className="h-8 w-8 text-primary" />
               </div>
@@ -116,10 +156,10 @@ const Admin = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-600 text-sm">Ministries</p>
-                  <p className="text-2xl font-bold text-gray-900">4</p>
+                  <p className="text-gray-600 text-sm">Total Files</p>
+                  <p className="text-2xl font-bold text-gray-900">{totalFiles}</p>
                 </div>
-                <Building2 className="h-8 w-8 text-secondary" />
+                <BarChart3 className="h-8 w-8 text-green-500" />
               </div>
             </CardContent>
           </Card>
@@ -128,10 +168,10 @@ const Admin = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-600 text-sm">Total Files</p>
-                  <p className="text-2xl font-bold text-gray-900">445</p>
+                  <p className="text-gray-600 text-sm">Ministries</p>
+                  <p className="text-2xl font-bold text-gray-900">{totalMinistries}</p>
                 </div>
-                <Files className="h-8 w-8 text-green-500" />
+                <Settings className="h-8 w-8 text-purple-500" />
               </div>
             </CardContent>
           </Card>
@@ -141,148 +181,148 @@ const Admin = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 text-sm">Storage Used</p>
-                  <p className="text-2xl font-bold text-gray-900">2.4 GB</p>
+                  <p className="text-2xl font-bold text-gray-900">{totalStorage}</p>
                 </div>
-                <TrendingUp className="h-8 w-8 text-purple-500" />
+                <Shield className="h-8 w-8 text-orange-500" />
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Management Tabs */}
-        <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="users">User Management</TabsTrigger>
-            <TabsTrigger value="ministries">Ministry Management</TabsTrigger>
-          </TabsList>
+        {/* User Management */}
+        <Card className="shadow-lg border-0 mb-8">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>User Management</CardTitle>
+                <CardDescription>Manage user accounts and permissions</CardDescription>
+              </div>
+              <Button className="rounded-xl">
+                <Plus className="h-4 w-4 mr-2" />
+                {isDemoMode ? "Add User (Demo)" : "Add User"}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {/* Filters */}
+            <div className="flex flex-col md:flex-row gap-4 mb-6">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Search users..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 h-12 rounded-xl"
+                />
+              </div>
+              
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger className="w-full md:w-48 h-12 rounded-xl">
+                  <SelectValue placeholder="Filter by role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Roles</SelectItem>
+                  <SelectItem value="Admin">Admin</SelectItem>
+                  <SelectItem value="MinistryLeader">Ministry Leader</SelectItem>
+                  <SelectItem value="Member">Member</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-          <TabsContent value="users">
-            <Card className="shadow-lg border-0">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>User Management</CardTitle>
-                    <CardDescription>Manage user accounts and permissions</CardDescription>
+            {/* User List */}
+            <div className="space-y-4">
+              {filteredUsers.map((user) => (
+                <div key={user.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-semibold">
+                      {user.first_name[0]}{user.last_name[0]}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">{user.first_name} {user.last_name}</h3>
+                      <p className="text-sm text-gray-600">{user.email}</p>
+                      <p className="text-sm text-gray-500">{getMinistryName(user.ministry_id)}</p>
+                    </div>
                   </div>
-                  <Button className="rounded-xl bg-primary hover:bg-primary/90">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add User
-                  </Button>
+                  
+                  <div className="flex items-center gap-4">
+                    <Badge className={`${getRoleBadgeColor(user.role)} border-0`}>
+                      {getRoleIcon(user.role)}
+                      <span className="ml-1">{user.role}</span>
+                    </Badge>
+                    
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" className="rounded-lg">
+                        Edit
+                      </Button>
+                      {user.role !== 'Admin' && (
+                        <Button variant="outline" size="sm" className="rounded-lg text-red-600 hover:text-red-700">
+                          <UserX className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="mb-4">
-                  <Input
-                    placeholder="Search users..."
-                    className="max-w-sm rounded-xl"
-                  />
-                </div>
+              ))}
+            </div>
+
+            {filteredUsers.length === 0 && (
+              <div className="text-center py-8">
+                <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">No users found matching your criteria</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Ministry Management */}
+        <Card className="shadow-lg border-0">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Ministry Management</CardTitle>
+                <CardDescription>Manage ministry groups and permissions</CardDescription>
+              </div>
+              <Button className="rounded-xl">
+                <Plus className="h-4 w-4 mr-2" />
+                {isDemoMode ? "Add Ministry (Demo)" : "Add Ministry"}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {ministries.map((ministry) => {
+                const userCount = users.filter(u => u.ministry_id === ministry.id).length;
+                const fileCount = isDemoMode ? 
+                  demoFiles.filter(f => f.ministry_id === ministry.id).length : 
+                  Math.floor(Math.random() * 100) + 50;
                 
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>User</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Ministry</TableHead>
-                      <TableHead>Join Date</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {users.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{user.name}</p>
-                            <p className="text-sm text-gray-600">{user.email}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={`${getRoleBadgeColor(user.role)} border-0`}>
-                            {getRoleIcon(user.role)}
-                            <span className="ml-1">{user.role}</span>
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{user.ministry}</TableCell>
-                        <TableCell>{new Date(user.joinDate).toLocaleDateString()}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="text-green-600 border-green-200">
-                            {user.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="sm">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="ministries">
-            <Card className="shadow-lg border-0">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Ministry Management</CardTitle>
-                    <CardDescription>Manage ministries and their settings</CardDescription>
-                  </div>
-                  <Button className="rounded-xl bg-primary hover:bg-primary/90">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Ministry
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {ministries.map((ministry) => (
-                    <Card key={ministry.id} className="border border-gray-200">
-                      <CardHeader>
-                        <CardTitle className="text-lg">{ministry.name}</CardTitle>
-                        <CardDescription>{ministry.description}</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Leader:</span>
-                            <span className="font-medium">{ministry.leader}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Members:</span>
-                            <span className="font-medium">{ministry.members}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Files:</span>
-                            <span className="font-medium">{ministry.files}</span>
-                          </div>
+                return (
+                  <Card key={ministry.id} className="border border-gray-200">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-semibold text-lg">{ministry.name}</h3>
+                        <Button variant="outline" size="sm" className="rounded-lg">
+                          Edit
+                        </Button>
+                      </div>
+                      
+                      <div className="space-y-2 text-sm text-gray-600">
+                        <div className="flex justify-between">
+                          <span>Users:</span>
+                          <span>{userCount}</span>
                         </div>
-                        <div className="flex gap-2 mt-4">
-                          <Button variant="outline" size="sm" className="flex-1">
-                            <Edit className="h-4 w-4 mr-1" />
-                            Edit
-                          </Button>
-                          <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                        <div className="flex justify-between">
+                          <span>Files:</span>
+                          <span>{fileCount}</span>
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );

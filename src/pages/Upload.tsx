@@ -7,9 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { Upload as UploadIcon, X, FileText, Image, Video, CheckCircle } from "lucide-react";
+import { Upload as UploadIcon, X, FileText, Image, Video, CheckCircle, ArrowLeft } from "lucide-react";
 import { useState, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useDemoContext } from "@/contexts/DemoContext";
+import { Link } from "react-router-dom";
 
 const Upload = () => {
   const [files, setFiles] = useState<File[]>([]);
@@ -19,16 +21,43 @@ const Upload = () => {
   const [eventDate, setEventDate] = useState("");
   const [notes, setNotes] = useState("");
   const { toast } = useToast();
+  const { isDemoMode, addDemoFile, demoFiles } = useDemoContext();
 
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     const droppedFiles = Array.from(e.dataTransfer.files);
+    
+    if (isDemoMode) {
+      const userUploadedFiles = demoFiles.filter(file => !file.id.startsWith('demo-file-'));
+      if (userUploadedFiles.length + files.length + droppedFiles.length > 2) {
+        toast({
+          title: "Demo Limit Reached",
+          description: "Demo mode is limited to 2 additional files. Sign up for unlimited uploads!",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+    
     setFiles(prev => [...prev, ...droppedFiles]);
-  }, []);
+  }, [files.length, demoFiles, isDemoMode, toast]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files);
+      
+      if (isDemoMode) {
+        const userUploadedFiles = demoFiles.filter(file => !file.id.startsWith('demo-file-'));
+        if (userUploadedFiles.length + files.length + selectedFiles.length > 2) {
+          toast({
+            title: "Demo Limit Reached", 
+            description: "Demo mode is limited to 2 additional files. Sign up for unlimited uploads!",
+            variant: "destructive"
+          });
+          return;
+        }
+      }
+      
       setFiles(prev => [...prev, ...selectedFiles]);
     }
   };
@@ -37,27 +66,59 @@ const Upload = () => {
     setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const simulateUpload = async () => {
-    setUploading(true);
-    
-    for (const file of files) {
-      const fileId = file.name;
-      
-      // Simulate multipart upload progress
-      for (let progress = 0; progress <= 100; progress += 10) {
-        await new Promise(resolve => setTimeout(resolve, 200));
-        setUploadProgress(prev => ({ ...prev, [fileId]: progress }));
-      }
+  const handleUpload = async () => {
+    if (!ministry) {
+      toast({
+        title: "Ministry Required",
+        description: "Please select a ministry before uploading.",
+        variant: "destructive"
+      });
+      return;
     }
 
-    toast({
-      title: "Upload Complete!",
-      description: `Successfully uploaded ${files.length} files to ${ministry}`,
-    });
+    setUploading(true);
+    
+    try {
+      if (isDemoMode) {
+        // Demo mode: use addDemoFile
+        for (const file of files) {
+          await addDemoFile(file, ministry, eventDate, notes);
+        }
+        
+        toast({
+          title: "Demo Upload Complete!",
+          description: `Successfully added ${files.length} files to demo`,
+        });
+      } else {
+        // Real mode: simulate multipart upload with progress
+        for (const file of files) {
+          const fileId = file.name;
+          
+          // Simulate 8-part multipart upload progress
+          for (let part = 1; part <= 8; part++) {
+            await new Promise(resolve => setTimeout(resolve, 250));
+            const progress = Math.floor((part / 8) * 100);
+            setUploadProgress(prev => ({ ...prev, [fileId]: progress }));
+          }
+        }
 
-    setFiles([]);
-    setUploadProgress({});
-    setUploading(false);
+        toast({
+          title: "Upload Complete!",
+          description: `Successfully uploaded ${files.length} files to ${ministry}`,
+        });
+      }
+
+      setFiles([]);
+      setUploadProgress({});
+      setUploading(false);
+    } catch (error) {
+      toast({
+        title: "Upload Error",
+        description: error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive"
+      });
+      setUploading(false);
+    }
   };
 
   const getFileIcon = (file: File) => {
@@ -78,14 +139,44 @@ const Upload = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  const userUploadedCount = isDemoMode ? demoFiles.filter(file => !file.id.startsWith('demo-file-')).length : 0;
+
   return (
     <div className="min-h-screen bg-background font-poppins">
-      <Header />
+      {isDemoMode ? (
+        // Demo mode header
+        <header className="bg-white border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center space-x-4">
+                <Button asChild variant="ghost" size="sm">
+                  <Link to="/">
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Back to Home
+                  </Link>
+                </Button>
+                <h1 className="text-2xl font-bold text-primary">ChurchShare Pro - Upload</h1>
+              </div>
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-gray-600">Demo Mode: {userUploadedCount}/2 files</span>
+                <Button asChild>
+                  <Link to="/auth">Sign Up for Full Access</Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </header>
+      ) : (
+        <Header />
+      )}
       
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Upload Files</h1>
-          <p className="text-gray-600">Share photos, videos, and documents with your ministry</p>
+          <p className="text-gray-600">
+            Share photos, videos, and documents with your ministry
+            {isDemoMode && " (Demo Mode - 2 file limit)"}
+          </p>
         </div>
 
         <div className="space-y-6">
@@ -150,6 +241,7 @@ const Upload = () => {
                 <h3 className="text-xl font-semibold mb-2">Drop files here</h3>
                 <p className="text-gray-600 mb-4">
                   Or click to browse and select files
+                  {isDemoMode && ` (${userUploadedCount + files.length}/2)`}
                 </p>
                 <input
                   type="file"
@@ -166,6 +258,7 @@ const Upload = () => {
                 </Button>
                 <p className="text-sm text-gray-500 mt-4">
                   Supports images, videos, documents up to 500MB each
+                  {isDemoMode && " (Demo: 2 file limit)"}
                 </p>
               </div>
             </CardContent>
@@ -187,10 +280,11 @@ const Upload = () => {
                         <p className="text-sm text-gray-600">{formatFileSize(file.size)}</p>
                         {uploading && uploadProgress[file.name] !== undefined && (
                           <div className="mt-2">
+                            <div className="flex justify-between text-xs text-gray-600 mb-1">
+                              <span>Part {Math.ceil((uploadProgress[file.name] / 100) * 8)} of 8</span>
+                              <span>{uploadProgress[file.name]}%</span>
+                            </div>
                             <Progress value={uploadProgress[file.name]} className="h-2" />
-                            <p className="text-xs text-gray-500 mt-1">
-                              {uploadProgress[file.name]}% uploaded
-                            </p>
                           </div>
                         )}
                         {uploadProgress[file.name] === 100 && (
@@ -216,11 +310,11 @@ const Upload = () => {
 
                 <div className="mt-6 flex gap-4">
                   <Button
-                    onClick={simulateUpload}
+                    onClick={handleUpload}
                     disabled={uploading || !ministry || files.length === 0}
                     className="flex-1 h-12 rounded-xl bg-primary hover:bg-primary/90"
                   >
-                    {uploading ? "Uploading..." : "Upload Files"}
+                    {uploading ? (isDemoMode ? "Adding to Demo..." : "Uploading...") : (isDemoMode ? "Add to Demo" : "Upload Files")}
                   </Button>
                   <Button
                     variant="outline"
