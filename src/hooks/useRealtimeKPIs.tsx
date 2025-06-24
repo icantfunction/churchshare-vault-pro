@@ -25,13 +25,14 @@ export const useRealtimeKPIs = () => {
     try {
       const { data, error } = await supabase
         .from('files')
-        .select('file_size, created_at')
+        .select('created_at')
         .eq('organisation_id', profile.organisation_id);
 
       if (error) throw error;
 
       const totalFiles = data?.length || 0;
-      const totalSize = data?.reduce((sum, file) => sum + (file.file_size || 0), 0) || 0;
+      // Since we don't have file_size column, we'll set totalSize to 0 for now
+      const totalSize = 0;
       
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
