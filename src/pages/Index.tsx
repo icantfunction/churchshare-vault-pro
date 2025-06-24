@@ -25,19 +25,21 @@ const Index = () => {
   }, [setDemoMode]);
 
   return (
-    <div className="min-h-screen bg-background font-poppins">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 font-poppins">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-gray-200/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center">
-              <h1 className="text-3xl font-bold text-primary">ChurchShare Pro</h1>
+              <h1 className="text-3xl font-bold">
+                Church<span className="bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">Share</span> Pro
+              </h1>
             </div>
             <div className="flex items-center space-x-4">
-              <Button asChild variant="ghost">
+              <Button asChild variant="ghost" className="text-gray-700 hover:text-primary">
                 <Link to="/auth">Sign In</Link>
               </Button>
-              <Button asChild>
+              <Button asChild className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90">
                 <Link to="/auth">Get Started</Link>
               </Button>
             </div>
@@ -49,99 +51,88 @@ const Index = () => {
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
           <h2 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
-            ChurchShare Pro
+            Church<span className="bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">Share</span> Pro
           </h2>
-          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+          <p className="text-xl text-gray-600 mb-12 max-w-3xl mx-auto leading-relaxed">
             Simple, secure file sharing for churches and creative ministries. Upload and share high-quality photos without compression.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button asChild size="lg" className="h-14 px-8 text-lg rounded-xl">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
+            <Button asChild size="lg" className="h-14 px-8 text-lg rounded-xl bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 shadow-lg">
               <Link to="/auth">Start Free Trial</Link>
             </Button>
             <Button 
               asChild 
               variant="outline" 
               size="lg" 
-              className="h-14 px-8 text-lg rounded-xl"
+              className="h-14 px-8 text-lg rounded-xl border-2 border-primary/20 hover:border-primary/40 hover:bg-primary/5"
               onClick={handleViewDemo}
             >
               <Link to="/demo/files">View Demo</Link>
             </Button>
           </div>
-        </div>
-      </section>
 
-      {/* Main Features Section */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
+          {/* Main Features Section - Inline */}
+          <div className="mb-16">
             <h3 className="text-3xl font-bold text-gray-900 mb-4">
               Built for Ministry Excellence
             </h3>
-            <p className="text-lg text-gray-600">
+            <p className="text-lg text-gray-600 mb-12">
               Everything your church needs to manage and share files securely
             </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white/80 backdrop-blur-sm">
+                <CardHeader className="pb-4">
+                  <div className="w-16 h-16 bg-gradient-to-br from-primary/10 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <Shield className="h-8 w-8 text-primary" />
+                  </div>
+                  <CardTitle className="text-xl">Secure & Private</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription className="text-gray-600 leading-relaxed">
+                    Role-based permissions ensure only authorized ministry members can access files.
+                  </CardDescription>
+                </CardContent>
+              </Card>
+
+              <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white/80 backdrop-blur-sm">
+                <CardHeader className="pb-4">
+                  <div className="w-16 h-16 bg-gradient-to-br from-secondary/10 to-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <Upload className="h-8 w-8 text-secondary" />
+                  </div>
+                  <CardTitle className="text-xl">High-Quality Uploads</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription className="text-gray-600 leading-relaxed">
+                    Upload photos and files without compression. Original quality preserved.
+                  </CardDescription>
+                </CardContent>
+              </Card>
+
+              <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white/80 backdrop-blur-sm">
+                <CardHeader className="pb-4">
+                  <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <Users className="h-8 w-8 text-green-600" />
+                  </div>
+                  <CardTitle className="text-xl">Ministry Organization</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription className="text-gray-600 leading-relaxed">
+                    Organize files by ministry and events. Easy to find what you need.
+                  </CardDescription>
+                </CardContent>
+              </Card>
+            </div>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="text-center border-0 shadow-lg">
-              <CardHeader>
-                <Shield className="h-12 w-12 text-primary mx-auto mb-4" />
-                <CardTitle>Secure & Private</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription>
-                  Role-based permissions ensure only authorized ministry members can access files.
-                </CardDescription>
-              </CardContent>
-            </Card>
-
-            <Card className="text-center border-0 shadow-lg">
-              <CardHeader>
-                <Upload className="h-12 w-12 text-secondary mx-auto mb-4" />
-                <CardTitle>High-Quality Uploads</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription>
-                  Upload photos and files without compression. Original quality preserved.
-                </CardDescription>
-              </CardContent>
-            </Card>
-
-            <Card className="text-center border-0 shadow-lg">
-              <CardHeader>
-                <Users className="h-12 w-12 text-green-500 mx-auto mb-4" />
-                <CardTitle>Ministry Organization</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription>
-                  Organize files by ministry and events. Easy to find what you need.
-                </CardDescription>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20">
-        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          <h3 className="text-4xl font-bold text-gray-900 mb-6">
-            Ready to Transform Your Ministry's File Sharing?
-          </h3>
-          <p className="text-lg text-gray-600 mb-8">
-            Join thousands of churches already using ChurchShare Pro
-          </p>
-          <Button asChild size="lg" className="h-14 px-8 text-lg rounded-xl">
-            <Link to="/auth">Get Started Today</Link>
-          </Button>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
+      <footer className="bg-gray-900/95 backdrop-blur-sm text-white py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h4 className="text-2xl font-bold mb-4">ChurchShare Pro</h4>
+          <h4 className="text-2xl font-bold mb-4">
+            Church<span className="bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">Share</span> Pro
+          </h4>
           <p className="text-gray-400">
             Secure, simple file sharing for churches and creative ministries
           </p>

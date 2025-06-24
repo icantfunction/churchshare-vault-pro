@@ -2,7 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Image, Video, ArrowLeft, Upload } from "lucide-react";
+import { FileText, Image, Video, ArrowLeft, Upload, Sparkles } from "lucide-react";
 import { useDemoContext } from "@/contexts/DemoContext";
 import { Link } from "react-router-dom";
 
@@ -37,23 +37,29 @@ const DemoFiles = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background font-poppins">
-      {/* Simple Header */}
-      <header className="bg-white border-b border-gray-200">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 font-poppins">
+      {/* Header */}
+      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
-              <Button asChild variant="ghost" size="sm">
+              <Button asChild variant="ghost" size="sm" className="hover:bg-gray-100/80">
                 <Link to="/">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back to Home
                 </Link>
               </Button>
-              <h1 className="text-2xl font-bold text-primary">ChurchShare Pro - Demo Files</h1>
+              <h1 className="text-2xl font-bold">
+                Church<span className="bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">Share</span> Pro
+                <span className="ml-2 text-sm bg-gradient-to-r from-primary to-purple-600 text-white px-2 py-1 rounded-lg">Demo</span>
+              </h1>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">Demo Mode: {userUploadedFiles.length}/2 files</span>
-              <Button asChild>
+              <span className="text-sm text-gray-600 bg-white/60 px-3 py-1 rounded-full">
+                <Sparkles className="h-3 w-3 inline mr-1" />
+                {userUploadedFiles.length}/2 demo files
+              </span>
+              <Button asChild className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90">
                 <Link to="/auth">Sign Up for Full Access</Link>
               </Button>
             </div>
@@ -69,7 +75,7 @@ const DemoFiles = () => {
           </div>
           <div className="flex gap-4">
             {userUploadedFiles.length < 2 && (
-              <Button asChild>
+              <Button asChild className="bg-gradient-to-r from-secondary to-orange-500 hover:from-secondary/90 hover:to-orange-500/90">
                 <Link to="/demo/upload">
                   <Upload className="h-4 w-4 mr-2" />
                   Add More Files
@@ -77,7 +83,7 @@ const DemoFiles = () => {
               </Button>
             )}
             {demoFiles.length > 0 && (
-              <Button variant="outline" onClick={clearDemoFiles}>
+              <Button variant="outline" onClick={clearDemoFiles} className="border-red-200 text-red-600 hover:bg-red-50">
                 Clear Demo Files
               </Button>
             )}
@@ -85,14 +91,16 @@ const DemoFiles = () => {
         </div>
 
         {demoFiles.length === 0 ? (
-          <Card className="shadow-lg border-0">
+          <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
             <CardContent className="p-12 text-center">
-              <Upload className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                <Upload className="h-10 w-10 text-gray-400" />
+              </div>
               <h3 className="text-xl font-semibold mb-2">No Demo Files Yet</h3>
               <p className="text-gray-600 mb-6">
                 Upload up to 2 files to try out ChurchShare Pro's file management features
               </p>
-              <Button asChild>
+              <Button asChild className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90">
                 <Link to="/demo/upload">Upload Demo Files</Link>
               </Button>
             </CardContent>
@@ -100,11 +108,13 @@ const DemoFiles = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {demoFiles.map((file) => (
-              <Card key={file.id} className="shadow-lg border-0 hover:shadow-xl transition-shadow">
+              <Card key={file.id} className="shadow-lg border-0 hover:shadow-xl transition-all duration-300 bg-white/80 backdrop-blur-sm overflow-hidden">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    {getFileIcon(file.file_type)}
-                    <Badge variant="secondary">
+                    <div className="w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center">
+                      {getFileIcon(file.file_type)}
+                    </div>
+                    <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
                       {getMinistryName(file.ministry_id)}
                     </Badge>
                   </div>
@@ -112,10 +122,10 @@ const DemoFiles = () => {
                 <CardContent>
                   <div className="space-y-3">
                     <div>
-                      <h3 className="font-semibold truncate" title={file.file_name}>
+                      <h3 className="font-semibold truncate text-lg" title={file.file_name}>
                         {file.file_name}
                       </h3>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-gray-600 font-medium">
                         {formatFileSize(file.file_size)}
                       </p>
                     </div>
@@ -147,7 +157,7 @@ const DemoFiles = () => {
                         <img 
                           src={file.file_url} 
                           alt={file.file_name}
-                          className="w-full h-32 object-cover rounded-lg"
+                          className="w-full h-32 object-cover rounded-lg shadow-sm"
                         />
                       </div>
                     )}
@@ -159,15 +169,15 @@ const DemoFiles = () => {
         )}
 
         {demoFiles.length > 0 && (
-          <Card className="mt-8 shadow-lg border-0 bg-blue-50">
-            <CardContent className="p-6">
+          <Card className="mt-8 shadow-xl border-0 bg-gradient-to-r from-blue-50 to-purple-50 backdrop-blur-sm">
+            <CardContent className="p-8">
               <div className="text-center">
-                <h3 className="text-lg font-semibold mb-2">Ready for More?</h3>
-                <p className="text-gray-600 mb-4">
+                <h3 className="text-xl font-semibold mb-3">Ready for More?</h3>
+                <p className="text-gray-600 mb-6 leading-relaxed">
                   Sign up for ChurchShare Pro to get unlimited file storage, real team collaboration, 
                   and advanced ministry management features.
                 </p>
-                <Button asChild size="lg">
+                <Button asChild size="lg" className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90">
                   <Link to="/auth">Sign Up for Full Access</Link>
                 </Button>
               </div>
