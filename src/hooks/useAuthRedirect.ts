@@ -24,15 +24,45 @@ export const useAuthRedirect = () => {
   // Handle redirect logic
   useEffect(() => {
     if (canRedirect) {
-      console.log('Auth page: User authenticated and profile ready, redirecting to dashboard');
+      console.log('Auth page: User authenticated and ready, redirecting to dashboard');
       redirectAttempted.current = true;
       
-      toast({
-        title: "Welcome back!",
-        description: "Successfully signed in to ChurchShare",
-      });
+      // Only show success toast if profile loaded successfully
+      if (profile) {
+        toast({
+          title: "Welcome back!",
+          description: "Successfully signed in to ChurchShare",
+        });
+      } else if (profileError) {
+        // Show warning toast if profile failed to load but still redirect
+        toast({
+          title: "Signed in with limited profile",
+          description: "Some profile information couldn't be loaded. You can still use the app.",
+          variant: "destructive",
+        });
+      }
     }
-  }, [canRedirect, toast]);
+  }, [canRedirect, toast, profile, profileError]);
+
+  // Handle cases where authentication is stuck
+  useEffect(() => {
+    if (user && authLoading && !profile && !profileError) {
+      // If we have a user but loading is stuck, set a fallback timeout
+      const fallbackTimeout = setTimeout(() => {
+        console.warn('Auth redirect: Profile loading seems stuck, allowing redirect anyway');
+        if (!redirectAttempted.current && location.pathname !== "/dashboard") {
+          redirectAttempted.current = true;
+          toast({
+            title: "Proceeding with limited profile",
+            description: "Profile loading took too long. You can still access the dashboard.",
+            variant: "destructive",
+          });
+        }
+      }, 8000);
+
+      return () => clearTimeout(fallbackTimeout);
+    }
+  }, [user, authLoading, profile, profileError, location.pathname, toast]);
 
   return {
     shouldRedirect,

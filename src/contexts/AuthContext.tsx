@@ -46,11 +46,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('AuthContext: Fetching profile for user:', userId);
       setProfileError(null);
       
-      const { data, error } = await supabase
+      // Create a timeout promise
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Profile fetch timeout')), 10000);
+      });
+
+      // Race between the actual fetch and timeout
+      const fetchPromise = supabase
         .from('users')
         .select('*')
         .eq('id', userId)
         .single();
+
+      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
 
       if (error) {
         console.error('AuthContext: Error fetching user profile:', error);
@@ -74,18 +82,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return profile;
     } catch (error) {
       console.error('AuthContext: Error in fetchUserProfile:', error);
-      setProfileError('Failed to load user profile');
+      if (error instanceof Error && error.message === 'Profile fetch timeout') {
+        setProfileError('Profile fetch timed out. Please try refreshing the page.');
+      } else {
+        setProfileError('Failed to load user profile');
+      }
       return null;
     }
   }, []);
 
   useEffect(() => {
     let mounted = true;
+    let authTimeout: NodeJS.Timeout;
     
     const handleAuthStateChange = async (event: string, session: Session | null) => {
       if (!mounted) return;
       
       console.log('AuthContext: Auth state changed:', event, !!session);
+      
+      // Clear any existing timeout
+      if (authTimeout) {
+        clearTimeout(authTimeout);
+      }
       
       setSession(session);
       setUser(session?.user ?? null);
@@ -146,11 +164,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
+    // Set a maximum timeout for auth loading (15 seconds)
+    authTimeout = setTimeout(() => {
+      if (mounted && loading) {
+        console.warn('AuthContext: Auth loading timeout reached, setting loading to false');
+        setLoading(false);
+        setProfileError('Authentication check timed out. Please refresh the page.');
+      }
+    }, 15000);
+
     initializeAuth();
 
     return () => {
       console.log('AuthContext: Cleaning up');
       mounted = false;
+      if (authTimeout) {
+        clearTimeout(authTimeout);
+      }
       subscription.unsubscribe();
     };
   }, [fetchUserProfile]);

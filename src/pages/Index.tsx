@@ -2,16 +2,27 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, Upload, Users } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useDemoContext } from "@/contexts/DemoContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
 
 const Index = () => {
   const { setDemoMode } = useDemoContext();
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
 
   const handleViewDemo = () => {
     setDemoMode(true);
   };
+
+  // Redirect authenticated users to dashboard
+  useEffect(() => {
+    if (!loading && user) {
+      console.log('Index page: User authenticated, redirecting to dashboard');
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, loading, navigate]);
 
   // Reset demo mode when leaving the landing page to regular auth flow
   useEffect(() => {
@@ -23,6 +34,18 @@ const Index = () => {
       }
     };
   }, [setDemoMode]);
+
+  // Show loading spinner while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background font-poppins flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 font-poppins">
