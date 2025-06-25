@@ -1,135 +1,26 @@
 
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useState, useEffect, useRef } from "react";
-import { Link, useNavigate, useLocation, Navigate } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
+import { useState } from "react";
+import { Navigate } from "react-router-dom";
+import AuthLoadingSpinner from "@/components/auth/AuthLoadingSpinner";
+import AuthHeader from "@/components/auth/AuthHeader";
+import SignInForm from "@/components/auth/SignInForm";
+import SignUpForm from "@/components/auth/SignUpForm";
+import { useAuthRedirect } from "@/hooks/useAuthRedirect";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { toast } = useToast();
-  const { user, profile, loading: authLoading, profileError } = useAuth();
-  const redirectAttempted = useRef(false);
-
-  // Compute redirect conditions
-  const shouldRedirect = !authLoading && user && location.pathname !== "/dashboard";
-  const canRedirect = shouldRedirect && (profile || profileError) && !redirectAttempted.current;
-
-  // Reset redirect flag when auth state changes
-  useEffect(() => {
-    if (!user || !profile) {
-      redirectAttempted.current = false;
-    }
-  }, [user, profile]);
-
-  // Handle redirect logic
-  useEffect(() => {
-    if (canRedirect) {
-      console.log('Auth page: User authenticated and profile ready, redirecting to dashboard');
-      redirectAttempted.current = true;
-      
-      toast({
-        title: "Welcome back!",
-        description: "Successfully signed in to ChurchShare",
-      });
-    }
-  }, [canRedirect, toast]);
-
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      console.log('Auth page: Attempting sign in for:', email);
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        console.error('Auth page: Sign in error:', error);
-        toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive",
-        });
-      } else if (data.user) {
-        console.log('Auth page: Sign in successful for user:', data.user.id);
-        // Navigation will be handled by useEffect when auth state updates
-      }
-    } catch (error) {
-      console.error('Auth page: Sign in error:', error);
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred",
-        variant: "destructive",
-      });
-    }
-
-    setLoading(false);
-  };
-
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      console.log('Auth page: Attempting sign up for:', email);
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`
-        }
-      });
-
-      if (error) {
-        console.error('Auth page: Sign up error:', error);
-        toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive",
-        });
-      } else {
-        console.log('Auth page: Sign up successful');
-        toast({
-          title: "Account created!",
-          description: "Please check your email to verify your account",
-        });
-      }
-    } catch (error) {
-      console.error('Auth page: Sign up error:', error);
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred",
-        variant: "destructive",
-      });
-    }
-
-    setLoading(false);
-  };
+  
+  const { shouldRedirect, canRedirect, authLoading, profileError } = useAuthRedirect();
 
   // Show loading spinner while checking auth state
   if (authLoading) {
     console.log('Auth page: Showing loading screen - auth loading');
-    return (
-      <div className="min-h-screen bg-background font-poppins flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
+    return <AuthLoadingSpinner message="Loading..." />;
   }
 
   // Redirect to dashboard if authenticated and ready
@@ -141,26 +32,14 @@ const Auth = () => {
   // Show redirecting message if user is authenticated but waiting for profile/redirect
   if (shouldRedirect && !canRedirect) {
     console.log('Auth page: User authenticated, waiting for profile or redirect');
-    return (
-      <div className="min-h-screen bg-background font-poppins flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Redirecting to dashboard...</p>
-        </div>
-      </div>
-    );
+    return <AuthLoadingSpinner message="Redirecting to dashboard..." />;
   }
 
   console.log('Auth page: Rendering auth form');
   return (
     <div className="min-h-screen bg-background font-poppins flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <Link to="/" className="text-3xl font-bold text-primary">
-            ChurchShare
-          </Link>
-          <p className="text-gray-600 mt-2">Secure ministry file sharing</p>
-        </div>
+        <AuthHeader />
 
         <Card className="shadow-xl border-0">
           <CardHeader className="text-center">
@@ -185,75 +64,25 @@ const Auth = () => {
               </TabsList>
               
               <TabsContent value="signin">
-                <form onSubmit={handleSignIn} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-email">Email</Label>
-                    <Input
-                      id="signin-email"
-                      type="email"
-                      placeholder="your.email@church.org"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      className="h-12 rounded-xl"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-password">Password</Label>
-                    <Input
-                      id="signin-password"
-                      type="password"
-                      placeholder="Enter your password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      className="h-12 rounded-xl"
-                    />
-                  </div>
-                  <Button
-                    type="submit"
-                    className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 text-lg"
-                    disabled={loading}
-                  >
-                    {loading ? "Signing in..." : "Sign In"}
-                  </Button>
-                </form>
+                <SignInForm
+                  email={email}
+                  password={password}
+                  setEmail={setEmail}
+                  setPassword={setPassword}
+                  loading={loading}
+                  setLoading={setLoading}
+                />
               </TabsContent>
               
               <TabsContent value="signup">
-                <form onSubmit={handleSignUp} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      placeholder="your.email@church.org"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      className="h-12 rounded-xl"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
-                    <Input
-                      id="signup-password"
-                      type="password"
-                      placeholder="Create a password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      className="h-12 rounded-xl"
-                    />
-                  </div>
-                  <Button
-                    type="submit"
-                    className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 text-lg"
-                    disabled={loading}
-                  >
-                    {loading ? "Creating account..." : "Sign Up"}
-                  </Button>
-                </form>
+                <SignUpForm
+                  email={email}
+                  password={password}
+                  setEmail={setEmail}
+                  setPassword={setPassword}
+                  loading={loading}
+                  setLoading={setLoading}
+                />
               </TabsContent>
             </Tabs>
           </CardContent>
