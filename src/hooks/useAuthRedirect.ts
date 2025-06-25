@@ -19,7 +19,8 @@ export const useAuthRedirect = () => {
     hasUser: !!user,
     authLoading,
     hasRedirected: hasRedirectedRef.current,
-    toastShown: toastShownRef.current
+    toastShown: toastShownRef.current,
+    profileError
   });
 
   // Reset redirect flag when location changes or user changes
@@ -43,7 +44,7 @@ export const useAuthRedirect = () => {
     }
   }, [user?.id]);
 
-  // Handle redirect logic with strict guards
+  // Handle redirect logic with improved guards and timeout protection
   useEffect(() => {
     console.log('[DEBUG-306] useAuthRedirect: Main redirect effect triggered');
     console.log('[DEBUG-307] useAuthRedirect: Guard conditions check', {
@@ -54,7 +55,7 @@ export const useAuthRedirect = () => {
       isAuthPage: location.pathname === "/auth" || location.pathname === "/login"
     });
     
-    // Strict guards to prevent infinite loops
+    // Strict guards to prevent infinite loops and ensure proper conditions
     if (
       hasRedirectedRef.current || 
       authLoading || 
@@ -69,10 +70,11 @@ export const useAuthRedirect = () => {
     console.log('[DEBUG-901] State transition: Unauthenticated → Authenticated');
     hasRedirectedRef.current = true;
     
-    // Show welcome toast only once
+    // Show appropriate toast based on profile state
     if (!toastShownRef.current) {
       console.log('[DEBUG-310] useAuthRedirect: Showing welcome toast');
       toastShownRef.current = true;
+      
       if (profile) {
         toast({
           title: "Welcome back!",
@@ -84,10 +86,16 @@ export const useAuthRedirect = () => {
           description: "Some profile information couldn't be loaded. You can still use the app.",
           variant: "destructive",
         });
+      } else {
+        // User authenticated but profile still loading
+        toast({
+          title: "Welcome!",
+          description: "Successfully signed in to ChurchShare",
+        });
       }
     }
 
-    // Use setTimeout to prevent immediate re-render issues
+    // Use setTimeout to prevent immediate re-render issues with timeout protection
     const timeoutId = setTimeout(() => {
       console.log('[DEBUG-311] useAuthRedirect: Executing navigation timeout');
       if (hasRedirectedRef.current) {

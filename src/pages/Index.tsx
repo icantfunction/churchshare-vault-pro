@@ -14,11 +14,12 @@ const Index = () => {
   const { setDemoMode } = useDemoContext();
   console.log('[DEBUG-201] Index: Demo context obtained');
   
-  const { user, loading } = useAuth();
+  const { user, loading, profileError } = useAuth();
   console.log('[DEBUG-202] Index: Auth state received', { 
     hasUser: !!user, 
     loading,
-    userId: user?.id 
+    userId: user?.id,
+    profileError
   });
   
   const navigate = useNavigate();
@@ -29,7 +30,7 @@ const Index = () => {
     setDemoMode(true);
   };
 
-  // Simple redirect for authenticated users - no complex logic
+  // Redirect authenticated users to dashboard
   useEffect(() => {
     console.log('[DEBUG-205] Index: Redirect useEffect triggered', { loading, hasUser: !!user });
     
@@ -65,6 +66,11 @@ const Index = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-gray-600">Loading...</p>
+          {profileError && (
+            <p className="text-sm text-orange-600 mt-2">
+              Profile loading issue: {profileError}
+            </p>
+          )}
         </div>
       </div>
     );

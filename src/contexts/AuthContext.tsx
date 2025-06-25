@@ -60,7 +60,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setProfileError(null);
       console.log('[DEBUG-106] AuthProvider: Making Supabase profile query');
+      console.log('[DEBUG-150] AuthProvider: Database connection check starting');
       
+      // Test database connection first
+      const { error: connectionError } = await supabase.from('users').select('count').limit(1);
+      if (connectionError) {
+        console.error('[DEBUG-151] AuthProvider: Database connection failed:', connectionError);
+        throw new Error(`Database connection failed: ${connectionError.message}`);
+      }
+      console.log('[DEBUG-152] AuthProvider: Database connection successful');
+      
+      console.log('[DEBUG-153] AuthProvider: Executing user profile query');
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -71,7 +81,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         console.error('[DEBUG-703] AuthProvider: Profile fetch error:', error);
-        setProfileError(error.message);
+        console.log('[DEBUG-154] AuthProvider: Error details:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+        
+        if (error.code === 'PGRST116') {
+          console.log('[DEBUG-155] AuthProvider: No user record found in database');
+          setProfileError('User profile not found. Please contact administrator.');
+        } else if (error.code === '42501') {
+          console.log('[DEBUG-156] AuthProvider: RLS policy blocking access');
+          setProfileError('Access denied. Please check permissions.');
+        } else {
+          setProfileError(error.message);
+        }
+        return null;
+      }
+
+      if (!data) {
+        console.log('[DEBUG-157] AuthProvider: No data returned from query');
+        setProfileError('User profile not found');
         return null;
       }
 
@@ -91,6 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.timeEnd('[DEBUG-801] Profile fetch timing');
       console.error('[DEBUG-704] AuthProvider: Exception in fetchUserProfile:', error);
+      console.log('[DEBUG-158] AuthProvider: Full error object:', JSON.stringify(error, null, 2));
       setProfileError('Failed to load user profile');
       return null;
     }
@@ -99,6 +131,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     console.log('[DEBUG-108] AuthProvider: Main useEffect started');
     let mounted = true;
+    let loadingTimeout: NodeJS.Timeout;
+    
+    // Failsafe timeout to prevent infinite loading
+    const setLoadingTimeout = () => {
+      console.log('[DEBUG-159] AuthProvider: Setting failsafe loading timeout');
+      loadingTimeout = setTimeout(() => {
+        if (mounted) {
+          console.warn('[DEBUG-160] AuthProvider: Loading timeout reached, forcing loading to false');
+          setLoading(false);
+        }
+      }, 10000); // 10 second timeout
+    };
+    
+    const clearLoadingTimeout = () => {
+      if (loadingTimeout) {
+        console.log('[DEBUG-161] AuthProvider: Clearing loading timeout');
+        clearTimeout(loadingTimeout);
+      }
+    };
     
     const handleAuthStateChange = async (event: string, session: Session | null) => {
       console.log('[DEBUG-109] AuthProvider: Auth state change event:', event, 'Session exists:', !!session);
@@ -108,16 +159,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
       
+      clearLoadingTimeout();
+      
       console.log('[DEBUG-111] AuthProvider: Setting session and user state');
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
         console.log('[DEBUG-112] AuthProvider: User authenticated, fetching profile...');
-        const userProfile = await fetchUserProfile(session.user.id);
-        if (mounted) {
-          console.log('[DEBUG-113] AuthProvider: Setting profile state:', !!userProfile);
-          setProfile(userProfile);
+        console.log('[DEBUG-162] AuthProvider: Starting profile fetch with timeout protection');
+        
+        try {
+          const userProfile = await Promise.race([
+            fetchUserProfile(session.user.id),
+            new Promise<null>((_, reject) => 
+              setTimeout(() => reject(new Error('Profile fetch timeout')), 8000)
+            )
+          ]);
+          
+          if (mounted) {
+            console.log('[DEBUG-113] AuthProvider: Setting profile state:', !!userProfile);
+            setProfile(userProfile);
+          }
+        } catch (error) {
+          console.error('[DEBUG-163] AuthProvider: Profile fetch failed or timed out:', error);
+          if (mounted) {
+            setProfile(null);
+            setProfileError(error instanceof Error ? error.message : 'Profile fetch failed');
+          }
         }
       } else {
         console.log('[DEBUG-114] AuthProvider: No user session, clearing profile');
@@ -141,7 +210,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('[DEBUG-117] AuthProvider: Initializing auth...');
       console.time('[DEBUG-802] Initial session fetch timing');
       
+      setLoadingTimeout();
+      
       try {
+        console.log('[DEBUG-164] AuthProvider: Getting initial session');
         const { data: { session }, error } = await supabase.auth.getSession();
         console.timeEnd('[DEBUG-802] Initial session fetch timing');
         
@@ -160,6 +232,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('[DEBUG-706] AuthProvider: Exception in initializeAuth:', error);
         if (mounted) {
           console.log('[DEBUG-120] AuthProvider: Setting loading to false due to error');
+          clearLoadingTimeout();
           setLoading(false);
         }
       }
@@ -170,6 +243,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       console.log('[DEBUG-121] AuthProvider: Cleanup started');
       mounted = false;
+      clearLoadingTimeout();
       subscription.unsubscribe();
       console.log('[DEBUG-122] AuthProvider: Cleanup complete');
     };
