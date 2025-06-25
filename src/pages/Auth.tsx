@@ -2,7 +2,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import AuthLoadingSpinner from "@/components/auth/AuthLoadingSpinner";
 import AuthHeader from "@/components/auth/AuthHeader";
 import SignInForm from "@/components/auth/SignInForm";
@@ -14,7 +14,7 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   
-  const { shouldRedirect, canRedirect, authLoading, profileError } = useAuthRedirect();
+  const { authLoading, profileError, shouldShowAuthForm } = useAuthRedirect();
 
   // Show loading spinner while checking auth state
   if (authLoading) {
@@ -22,15 +22,9 @@ const Auth = () => {
     return <AuthLoadingSpinner message="Loading..." />;
   }
 
-  // Show redirecting message if user is authenticated but waiting for redirect
-  if (shouldRedirect && !canRedirect) {
-    console.log('Auth page: User authenticated, waiting for profile or redirect');
-    return <AuthLoadingSpinner message="Redirecting to dashboard..." />;
-  }
-
-  // Don't render auth form if redirect is happening
-  if (canRedirect) {
-    console.log('Auth page: Redirect ready, showing loading screen');
+  // Show auth form only if user is not authenticated
+  if (!shouldShowAuthForm) {
+    console.log('Auth page: User authenticated, showing redirect message');
     return <AuthLoadingSpinner message="Redirecting to dashboard..." />;
   }
 

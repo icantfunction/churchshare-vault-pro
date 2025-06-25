@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, Upload, Users } from "lucide-react";
@@ -16,7 +15,7 @@ const Index = () => {
     setDemoMode(true);
   };
 
-  // Redirect authenticated users to dashboard
+  // Simple redirect for authenticated users - no complex logic
   useEffect(() => {
     if (!loading && user) {
       console.log('Index page: User authenticated, redirecting to dashboard');
