@@ -18,7 +18,6 @@ interface Invite {
   expires_at: string;
   max_uses: number;
   uses: number;
-  organisation_id: string;
 }
 
 const InviteManager = () => {
@@ -34,6 +33,11 @@ const InviteManager = () => {
   const { toast } = useToast();
   const { profile } = useAuth();
 
+  // Only show this component for Directors, SuperOrg, or Admin users
+  if (!profile || !['Director', 'SuperOrg', 'Admin'].includes(profile.role)) {
+    return null;
+  }
+
   useEffect(() => {
     fetchInvites();
   }, []);
@@ -43,8 +47,7 @@ const InviteManager = () => {
       const { data, error } = await supabase
         .from('invites')
         .select('*')
-        .eq('organisation_id', profile?.organisation_id)
-        .order('created_at', { ascending: false });
+        .order('expires_at', { ascending: false });
 
       if (error) throw error;
       setInvites(data || []);
@@ -65,8 +68,6 @@ const InviteManager = () => {
   };
 
   const createInvite = async () => {
-    if (!profile?.organisation_id) return;
-    
     setCreating(true);
     try {
       const code = generateInviteCode();
@@ -77,7 +78,6 @@ const InviteManager = () => {
         .from('invites')
         .insert({
           code,
-          organisation_id: profile.organisation_id,
           role: formData.role,
           expires_at: expiresAt.toISOString(),
           max_uses: parseInt(formData.maxUses),
@@ -185,6 +185,7 @@ const InviteManager = () => {
                     <SelectContent>
                       <SelectItem value="Member">Member</SelectItem>
                       <SelectItem value="MinistryLeader">Ministry Leader</SelectItem>
+                      {profile.role === 'SuperOrg' && <SelectItem value="Director">Director</SelectItem>}
                     </SelectContent>
                   </Select>
                 </div>

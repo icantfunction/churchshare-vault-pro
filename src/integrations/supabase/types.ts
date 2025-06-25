@@ -154,36 +154,33 @@ export type Database = {
       }
       users: {
         Row: {
-          dob: string | null
+          created_at: string | null
+          date_of_birth: string | null
           email: string
           first_name: string | null
           id: string
-          is_director: boolean | null
           last_name: string | null
           ministry_id: string | null
-          organisation_id: string | null
           role: string | null
         }
         Insert: {
-          dob?: string | null
+          created_at?: string | null
+          date_of_birth?: string | null
           email: string
           first_name?: string | null
           id: string
-          is_director?: boolean | null
           last_name?: string | null
           ministry_id?: string | null
-          organisation_id?: string | null
           role?: string | null
         }
         Update: {
-          dob?: string | null
+          created_at?: string | null
+          date_of_birth?: string | null
           email?: string
           first_name?: string | null
           id?: string
-          is_director?: boolean | null
           last_name?: string | null
           ministry_id?: string | null
-          organisation_id?: string | null
           role?: string | null
         }
         Relationships: [
@@ -194,13 +191,6 @@ export type Database = {
             referencedRelation: "ministries"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "users_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "organisations"
-            referencedColumns: ["id"]
-          },
         ]
       }
     }
@@ -208,6 +198,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      current_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_current_user_org: {
         Args: Record<PropertyKey, never>
         Returns: string

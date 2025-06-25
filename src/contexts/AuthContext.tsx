@@ -6,13 +6,12 @@ import { supabase } from '@/integrations/supabase/client';
 interface UserProfile {
   id: string;
   email: string;
-  role: 'Admin' | 'MinistryLeader' | 'Member';
+  role: 'Admin' | 'MinistryLeader' | 'Member' | 'Director' | 'SuperOrg';
   ministry_id: string | null;
-  organisation_id: string | null;
   first_name: string | null;
   last_name: string | null;
-  dob: string | null;
-  is_director: boolean | null;
+  date_of_birth: string | null;
+  created_at: string | null;
 }
 
 interface AuthContextType {
@@ -62,13 +61,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const profile = {
         id: data.id,
         email: data.email,
-        role: data.role as 'Admin' | 'MinistryLeader' | 'Member',
+        role: data.role as 'Admin' | 'MinistryLeader' | 'Member' | 'Director' | 'SuperOrg',
         ministry_id: data.ministry_id,
-        organisation_id: data.organisation_id,
         first_name: data.first_name,
         last_name: data.last_name,
-        dob: data.dob,
-        is_director: data.is_director
+        date_of_birth: data.date_of_birth,
+        created_at: data.created_at
       } as UserProfile;
       
       return profile;

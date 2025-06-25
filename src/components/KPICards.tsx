@@ -16,7 +16,7 @@ const KPICards = () => {
   const { kpiData } = useRealtimeKPIs();
   const { profile } = useAuth();
   
-  const isAdmin = profile?.role === 'Admin' || profile?.is_director;
+  const isAdmin = profile?.role === 'Admin' || profile?.role === 'Director' || profile?.role === 'SuperOrg';
 
   const cards = [
     {
