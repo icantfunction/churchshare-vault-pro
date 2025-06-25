@@ -71,30 +71,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const handleAuthStateChange = useCallback(async (event: string, session: Session | null) => {
-    console.log('Auth state changed:', event, !!session);
-    
-    setSession(session);
-    setUser(session?.user ?? null);
-    
-    if (session?.user) {
-      try {
-        const profile = await fetchUserProfile(session.user.id);
-        setProfile(profile);
-      } catch (error) {
-        console.error('Error fetching profile:', error);
-        setProfile(null);
-      }
-    } else {
-      setProfile(null);
-    }
-    
-    setLoading(false);
-  }, [fetchUserProfile]);
-
   useEffect(() => {
     let mounted = true;
     
+    const handleAuthStateChange = async (event: string, session: Session | null) => {
+      if (!mounted) return;
+      
+      console.log('Auth state changed:', event, !!session);
+      
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        try {
+          const profile = await fetchUserProfile(session.user.id);
+          if (mounted) {
+            setProfile(profile);
+          }
+        } catch (error) {
+          console.error('Error fetching profile:', error);
+          if (mounted) {
+            setProfile(null);
+          }
+        }
+      } else {
+        if (mounted) {
+          setProfile(null);
+        }
+      }
+      
+      if (mounted) {
+        setLoading(false);
+      }
+    };
+
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
 
@@ -125,7 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [handleAuthStateChange]);
+  }, [fetchUserProfile]);
 
   const signOut = useCallback(async () => {
     try {
