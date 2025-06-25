@@ -1,10 +1,9 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,12 +25,12 @@ const Signup = () => {
   const [searchParams] = useSearchParams();
   
   // Pre-fill invite code from URL if present
-  useState(() => {
+  useEffect(() => {
     const code = searchParams.get('code');
     if (code) {
       setFormData(prev => ({ ...prev, inviteCode: code }));
     }
-  });
+  }, [searchParams]);
 
   const validateForm = () => {
     if (!formData.firstName || !formData.lastName || !formData.dob || !formData.email || !formData.password) {
