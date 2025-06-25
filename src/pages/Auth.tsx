@@ -20,30 +20,32 @@ const Auth = () => {
 
   // Redirect authenticated users to dashboard
   useEffect(() => {
-    // Only redirect if we're not loading and have both user and profile
-    if (!authLoading && user && profile) {
+    if (!authLoading && user) {
       console.log('User authenticated, redirecting to dashboard');
       navigate("/dashboard", { replace: true });
     }
-  }, [user, profile, authLoading, navigate]);
+  }, [user, authLoading, navigate]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      console.log('Attempting sign in...');
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
+        console.error('Sign in error:', error);
         toast({
           title: "Error",
           description: error.message,
           variant: "destructive",
         });
       } else if (data.user) {
+        console.log('Sign in successful:', data.user.id);
         toast({
           title: "Welcome back!",
           description: "Successfully signed in to ChurchShare",
@@ -66,31 +68,40 @@ const Auth = () => {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`
-      }
-    });
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/dashboard`
+        }
+      });
 
-    if (error) {
+      if (error) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Account created!",
+          description: "Please check your email to verify your account",
+        });
+      }
+    } catch (error) {
+      console.error('Sign up error:', error);
       toast({
         title: "Error",
-        description: error.message,
+        description: "An unexpected error occurred",
         variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Account created!",
-        description: "Please check your email to verify your account",
       });
     }
 
     setLoading(false);
   };
 
-  // Show loading while checking auth state, but with a timeout to prevent infinite loading
+  // Show loading spinner while checking auth state
   if (authLoading) {
     return (
       <div className="min-h-screen bg-background font-poppins flex items-center justify-center p-4">
@@ -102,8 +113,8 @@ const Auth = () => {
     );
   }
 
-  // If user is already authenticated, show a simple loading message while redirecting
-  if (user && profile) {
+  // If user is already authenticated, show redirecting message
+  if (user) {
     return (
       <div className="min-h-screen bg-background font-poppins flex items-center justify-center p-4">
         <div className="text-center">

@@ -39,8 +39,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchUserProfile = async (userId: string) => {
+  const fetchUserProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
+      console.log('Fetching profile for user:', userId);
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -52,6 +53,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return null;
       }
 
+      console.log('Profile fetched successfully:', data);
       return {
         id: data.id,
         email: data.email,
@@ -69,42 +71,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  useEffect(() => {
-    let mounted = true;
-    let initialized = false;
-
-    const handleAuthChange = async (event: string, session: Session | null) => {
-      console.log('Auth state changed:', event, !!session);
-      
-      if (!mounted) return;
-
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
+  const handleAuthStateChange = async (event: string, session: Session | null) => {
+    console.log('Auth state changed:', event, !!session);
+    
+    setSession(session);
+    setUser(session?.user ?? null);
+    
+    if (session?.user) {
+      // Fetch profile with timeout to prevent infinite loading
+      setTimeout(async () => {
         try {
           const profile = await fetchUserProfile(session.user.id);
-          if (mounted) {
-            setProfile(profile);
-          }
+          setProfile(profile);
         } catch (error) {
-          console.error('Error fetching profile on auth change:', error);
-          if (mounted) {
-            setProfile(null);
-          }
+          console.error('Error fetching profile:', error);
+          setProfile(null);
+        } finally {
+          setLoading(false);
         }
-      } else {
-        setProfile(null);
-      }
+      }, 0);
+    } else {
+      setProfile(null);
+      setLoading(false);
+    }
+  };
 
-      // Only set loading to false after we've handled the initial session
-      if (initialized && mounted) {
-        setLoading(false);
-      }
-    };
+  useEffect(() => {
+    let mounted = true;
 
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
+
+    // Initialize auth state
     const initializeAuth = async () => {
       try {
+        console.log('Initializing auth...');
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -112,9 +113,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         if (mounted) {
-          await handleAuthChange('INITIAL_SESSION', session);
-          initialized = true;
-          setLoading(false);
+          await handleAuthStateChange('INITIAL_SESSION', session);
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
@@ -124,26 +123,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
-
-    // Initialize auth
     initializeAuth();
+
+    // Timeout protection - ensure loading doesn't stay true forever
+    const timeoutId = setTimeout(() => {
+      if (mounted && loading) {
+        console.log('Auth initialization timeout - setting loading to false');
+        setLoading(false);
+      }
+    }, 5000);
 
     return () => {
       mounted = false;
       subscription.unsubscribe();
+      clearTimeout(timeoutId);
     };
   }, []);
 
   const signOut = async () => {
     try {
+      setLoading(true);
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error('Error signing out:', error);
       }
     } catch (error) {
       console.error('Error in signOut:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
