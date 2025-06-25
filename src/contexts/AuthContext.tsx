@@ -43,7 +43,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchUserProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
     try {
-      console.log('Fetching profile for user:', userId);
+      console.log('AuthContext: Fetching profile for user:', userId);
       setProfileError(null);
       
       const { data, error } = await supabase
@@ -53,13 +53,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       if (error) {
-        console.error('Error fetching user profile:', error);
+        console.error('AuthContext: Error fetching user profile:', error);
         setProfileError(error.message);
         return null;
       }
 
-      console.log('Profile fetched successfully:', data);
-      return {
+      console.log('AuthContext: Profile fetched successfully:', data);
+      const profile = {
         id: data.id,
         email: data.email,
         role: data.role as 'Admin' | 'MinistryLeader' | 'Member',
@@ -70,8 +70,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         dob: data.dob,
         is_director: data.is_director
       } as UserProfile;
+      
+      return profile;
     } catch (error) {
-      console.error('Error in fetchUserProfile:', error);
+      console.error('AuthContext: Error in fetchUserProfile:', error);
       setProfileError('Failed to load user profile');
       return null;
     }
@@ -83,25 +85,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const handleAuthStateChange = async (event: string, session: Session | null) => {
       if (!mounted) return;
       
-      console.log('Auth state changed:', event, !!session);
+      console.log('AuthContext: Auth state changed:', event, !!session);
       
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
+        console.log('AuthContext: User authenticated, fetching profile...');
         try {
-          const profile = await fetchUserProfile(session.user.id);
+          const userProfile = await fetchUserProfile(session.user.id);
           if (mounted) {
-            setProfile(profile);
+            setProfile(userProfile);
+            console.log('AuthContext: Profile set:', !!userProfile);
           }
         } catch (error) {
-          console.error('Error fetching profile:', error);
+          console.error('AuthContext: Error fetching profile:', error);
           if (mounted) {
             setProfile(null);
             setProfileError('Failed to load user profile');
           }
         }
       } else {
+        console.log('AuthContext: No user session, clearing profile');
         if (mounted) {
           setProfile(null);
           setProfileError(null);
@@ -110,27 +115,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (mounted) {
         setLoading(false);
+        console.log('AuthContext: Loading complete');
       }
     };
 
     // Set up auth state listener
+    console.log('AuthContext: Setting up auth state listener');
     const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
 
     // Get initial session
     const initializeAuth = async () => {
       try {
-        console.log('Initializing auth...');
+        console.log('AuthContext: Initializing auth...');
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error('Error getting session:', error);
+          console.error('AuthContext: Error getting session:', error);
+        } else {
+          console.log('AuthContext: Initial session retrieved:', !!session);
         }
 
         if (mounted) {
           await handleAuthStateChange('INITIAL_SESSION', session);
         }
       } catch (error) {
-        console.error('Error initializing auth:', error);
+        console.error('AuthContext: Error initializing auth:', error);
         if (mounted) {
           setLoading(false);
         }
@@ -140,6 +149,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initializeAuth();
 
     return () => {
+      console.log('AuthContext: Cleaning up');
       mounted = false;
       subscription.unsubscribe();
     };
@@ -147,13 +157,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = useCallback(async () => {
     try {
+      console.log('AuthContext: Signing out...');
       setLoading(true);
       const { error } = await supabase.auth.signOut();
       if (error) {
-        console.error('Error signing out:', error);
+        console.error('AuthContext: Error signing out:', error);
+      } else {
+        console.log('AuthContext: Successfully signed out');
       }
     } catch (error) {
-      console.error('Error in signOut:', error);
+      console.error('AuthContext: Error in signOut:', error);
     } finally {
       setLoading(false);
     }
