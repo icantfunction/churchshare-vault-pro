@@ -5,8 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { Link, useNavigate, useLocation, Navigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,25 +16,34 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { user, profile, loading: authLoading, profileError } = useAuth();
+  const redirectAttempted = useRef(false);
 
-  // Redirect authenticated users to dashboard
+  // Compute redirect conditions
+  const shouldRedirect = !authLoading && user && location.pathname !== "/dashboard";
+  const canRedirect = shouldRedirect && (profile || profileError) && !redirectAttempted.current;
+
+  // Reset redirect flag when auth state changes
   useEffect(() => {
-    console.log('Auth page: Checking auth state', { 
-      authLoading, 
-      hasUser: !!user, 
-      hasProfile: !!profile, 
-      hasProfileError: !!profileError 
-    });
-
-    // If auth is not loading and we have a user, redirect to dashboard
-    // We allow redirect even if profile loading failed (user can still use the app)
-    if (!authLoading && user) {
-      console.log('Auth page: User authenticated, redirecting to dashboard');
-      navigate("/dashboard", { replace: true });
+    if (!user || !profile) {
+      redirectAttempted.current = false;
     }
-  }, [user, profile, profileError, authLoading, navigate]);
+  }, [user, profile]);
+
+  // Handle redirect logic
+  useEffect(() => {
+    if (canRedirect) {
+      console.log('Auth page: User authenticated and profile ready, redirecting to dashboard');
+      redirectAttempted.current = true;
+      
+      toast({
+        title: "Welcome back!",
+        description: "Successfully signed in to ChurchShare",
+      });
+    }
+  }, [canRedirect, toast]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,10 +65,6 @@ const Auth = () => {
         });
       } else if (data.user) {
         console.log('Auth page: Sign in successful for user:', data.user.id);
-        toast({
-          title: "Welcome back!",
-          description: "Successfully signed in to ChurchShare",
-        });
         // Navigation will be handled by useEffect when auth state updates
       }
     } catch (error) {
@@ -127,9 +132,15 @@ const Auth = () => {
     );
   }
 
-  // If user is authenticated, they should be redirected by useEffect
-  if (user) {
-    console.log('Auth page: User authenticated, should redirect soon');
+  // Redirect to dashboard if authenticated and ready
+  if (canRedirect) {
+    console.log('Auth page: Redirecting to dashboard via Navigate component');
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // Show redirecting message if user is authenticated but waiting for profile/redirect
+  if (shouldRedirect && !canRedirect) {
+    console.log('Auth page: User authenticated, waiting for profile or redirect');
     return (
       <div className="min-h-screen bg-background font-poppins flex items-center justify-center p-4">
         <div className="text-center">
