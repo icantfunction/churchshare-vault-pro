@@ -23,27 +23,43 @@ interface AuthContextType {
   signOut: () => Promise<void>;
 }
 
+console.log('[DEBUG-100] AuthContext: Module loading started');
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
+  console.log('[DEBUG-101] AuthContext: useAuth hook called');
   const context = useContext(AuthContext);
   if (context === undefined) {
+    console.error('[DEBUG-702] AuthContext: useAuth called outside AuthProvider');
     throw new Error('useAuth must be used within an AuthProvider');
   }
+  console.log('[DEBUG-102] AuthContext: useAuth returning context', { 
+    hasUser: !!context.user, 
+    loading: context.loading,
+    hasProfile: !!context.profile 
+  });
   return context;
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  console.log('[DEBUG-103] AuthProvider: Component initialization started');
+  
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
 
+  console.log('[DEBUG-104] AuthProvider: Initial state set', { loading });
+
   const fetchUserProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
+    console.log('[DEBUG-105] AuthProvider: fetchUserProfile started for userId:', userId);
+    console.time('[DEBUG-801] Profile fetch timing');
+    
     try {
-      console.log('AuthContext: Fetching profile for user:', userId);
       setProfileError(null);
+      console.log('[DEBUG-106] AuthProvider: Making Supabase profile query');
       
       const { data, error } = await supabase
         .from('users')
@@ -51,13 +67,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('id', userId)
         .single();
 
+      console.timeEnd('[DEBUG-801] Profile fetch timing');
+
       if (error) {
-        console.error('AuthContext: Error fetching user profile:', error);
+        console.error('[DEBUG-703] AuthProvider: Profile fetch error:', error);
         setProfileError(error.message);
         return null;
       }
 
-      console.log('AuthContext: Profile fetched successfully:', data);
+      console.log('[DEBUG-107] AuthProvider: Profile fetched successfully:', data);
       const profile = {
         id: data.id,
         email: data.email,
@@ -71,32 +89,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       return profile;
     } catch (error) {
-      console.error('AuthContext: Error in fetchUserProfile:', error);
+      console.timeEnd('[DEBUG-801] Profile fetch timing');
+      console.error('[DEBUG-704] AuthProvider: Exception in fetchUserProfile:', error);
       setProfileError('Failed to load user profile');
       return null;
     }
   }, []);
 
   useEffect(() => {
+    console.log('[DEBUG-108] AuthProvider: Main useEffect started');
     let mounted = true;
     
     const handleAuthStateChange = async (event: string, session: Session | null) => {
-      if (!mounted) return;
+      console.log('[DEBUG-109] AuthProvider: Auth state change event:', event, 'Session exists:', !!session);
       
-      console.log('AuthContext: Auth state changed:', event, !!session);
+      if (!mounted) {
+        console.log('[DEBUG-110] AuthProvider: Component unmounted, skipping auth state change');
+        return;
+      }
       
+      console.log('[DEBUG-111] AuthProvider: Setting session and user state');
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        console.log('AuthContext: User authenticated, fetching profile...');
+        console.log('[DEBUG-112] AuthProvider: User authenticated, fetching profile...');
         const userProfile = await fetchUserProfile(session.user.id);
         if (mounted) {
+          console.log('[DEBUG-113] AuthProvider: Setting profile state:', !!userProfile);
           setProfile(userProfile);
-          console.log('AuthContext: Profile set:', !!userProfile);
         }
       } else {
-        console.log('AuthContext: No user session, clearing profile');
+        console.log('[DEBUG-114] AuthProvider: No user session, clearing profile');
         if (mounted) {
           setProfile(null);
           setProfileError(null);
@@ -104,33 +128,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       if (mounted) {
+        console.log('[DEBUG-115] AuthProvider: Setting loading to false');
+        console.log('[DEBUG-900] State transition: Loading → Loaded');
         setLoading(false);
-        console.log('AuthContext: Loading complete');
       }
     };
 
-    // Set up auth state listener
-    console.log('AuthContext: Setting up auth state listener');
+    console.log('[DEBUG-116] AuthProvider: Setting up auth state listener');
     const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
 
-    // Get initial session
     const initializeAuth = async () => {
+      console.log('[DEBUG-117] AuthProvider: Initializing auth...');
+      console.time('[DEBUG-802] Initial session fetch timing');
+      
       try {
-        console.log('AuthContext: Initializing auth...');
         const { data: { session }, error } = await supabase.auth.getSession();
+        console.timeEnd('[DEBUG-802] Initial session fetch timing');
         
         if (error) {
-          console.error('AuthContext: Error getting session:', error);
+          console.error('[DEBUG-705] AuthProvider: Error getting session:', error);
         } else {
-          console.log('AuthContext: Initial session retrieved:', !!session);
+          console.log('[DEBUG-118] AuthProvider: Initial session retrieved:', !!session);
         }
 
         if (mounted) {
+          console.log('[DEBUG-119] AuthProvider: Processing initial session');
           await handleAuthStateChange('INITIAL_SESSION', session);
         }
       } catch (error) {
-        console.error('AuthContext: Error initializing auth:', error);
+        console.timeEnd('[DEBUG-802] Initial session fetch timing');
+        console.error('[DEBUG-706] AuthProvider: Exception in initializeAuth:', error);
         if (mounted) {
+          console.log('[DEBUG-120] AuthProvider: Setting loading to false due to error');
           setLoading(false);
         }
       }
@@ -139,31 +168,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initializeAuth();
 
     return () => {
-      console.log('AuthContext: Cleaning up');
+      console.log('[DEBUG-121] AuthProvider: Cleanup started');
       mounted = false;
       subscription.unsubscribe();
+      console.log('[DEBUG-122] AuthProvider: Cleanup complete');
     };
   }, [fetchUserProfile]);
 
   const signOut = useCallback(async () => {
+    console.log('[DEBUG-123] AuthProvider: Sign out initiated');
+    console.time('[DEBUG-803] Sign out timing');
+    
     try {
-      console.log('AuthContext: Signing out...');
       setLoading(true);
       const { error } = await supabase.auth.signOut();
+      console.timeEnd('[DEBUG-803] Sign out timing');
+      
       if (error) {
-        console.error('AuthContext: Error signing out:', error);
+        console.error('[DEBUG-707] AuthProvider: Sign out error:', error);
       } else {
-        console.log('AuthContext: Successfully signed out');
+        console.log('[DEBUG-124] AuthProvider: Successfully signed out');
       }
     } catch (error) {
-      console.error('AuthContext: Error in signOut:', error);
+      console.timeEnd('[DEBUG-803] Sign out timing');
+      console.error('[DEBUG-708] AuthProvider: Exception in signOut:', error);
     } finally {
       setLoading(false);
     }
   }, []);
 
+  const contextValue = {
+    user,
+    profile,
+    session,
+    loading,
+    profileError,
+    signOut
+  };
+
+  console.log('[DEBUG-125] AuthProvider: Rendering with context value', {
+    hasUser: !!user,
+    hasProfile: !!profile,
+    hasSession: !!session,
+    loading,
+    profileError
+  });
+
   return (
-    <AuthContext.Provider value={{ user, profile, session, loading, profileError, signOut }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
