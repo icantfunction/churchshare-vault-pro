@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,14 +17,24 @@ const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, profile, loading: authLoading } = useAuth();
+  const redirectAttempted = useRef(false);
 
   // Redirect authenticated users to dashboard
   useEffect(() => {
-    if (!authLoading && user) {
+    // Only redirect if we have a user, auth is not loading, and we haven't already attempted redirect
+    if (!authLoading && user && !redirectAttempted.current) {
       console.log('User authenticated, redirecting to dashboard');
+      redirectAttempted.current = true;
       navigate("/dashboard", { replace: true });
     }
   }, [user, authLoading, navigate]);
+
+  // Reset redirect flag when user changes (for proper cleanup)
+  useEffect(() => {
+    if (!user) {
+      redirectAttempted.current = false;
+    }
+  }, [user]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,8 +123,8 @@ const Auth = () => {
     );
   }
 
-  // If user is already authenticated, show redirecting message
-  if (user) {
+  // If user is already authenticated and redirect was attempted, show redirecting message
+  if (user && redirectAttempted.current) {
     return (
       <div className="min-h-screen bg-background font-poppins flex items-center justify-center p-4">
         <div className="text-center">
