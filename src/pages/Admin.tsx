@@ -29,7 +29,8 @@ interface User {
   first_name: string;
   last_name: string;
   ministry_id: string;
-  is_director: boolean;
+  date_of_birth: string;
+  created_at: string;
 }
 
 const Admin = () => {
@@ -42,7 +43,8 @@ const Admin = () => {
   const [newMinistry, setNewMinistry] = useState({ name: "", description: "" });
 
   useEffect(() => {
-    if (profile && profile.role !== 'Admin' && !profile.is_director) {
+    const canAccessAdmin = ['Admin', 'Director', 'SuperOrg'].includes(profile?.role || '');
+    if (profile && !canAccessAdmin) {
       navigate('/dashboard');
       return;
     }
@@ -56,7 +58,6 @@ const Admin = () => {
       const { data: ministriesData, error: ministriesError } = await supabase
         .from('ministries')
         .select('*')
-        .eq('organisation_id', profile?.organisation_id)
         .order('name');
 
       if (ministriesError) throw ministriesError;
@@ -66,7 +67,6 @@ const Admin = () => {
       const { data: usersData, error: usersError } = await supabase
         .from('users')
         .select('*')
-        .eq('organisation_id', profile?.organisation_id)
         .order('first_name');
 
       if (usersError) throw usersError;
@@ -99,8 +99,7 @@ const Admin = () => {
         .from('ministries')
         .insert({
           name: newMinistry.name,
-          description: newMinistry.description,
-          organisation_id: profile?.organisation_id
+          description: newMinistry.description
         });
 
       if (error) throw error;
@@ -295,7 +294,7 @@ const Admin = () => {
                         <TableHead>Name</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>Role</TableHead>
-                        <TableHead>Director</TableHead>
+                        <TableHead>Ministry</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -318,15 +317,15 @@ const Admin = () => {
                                 <SelectItem value="Member">Member</SelectItem>
                                 <SelectItem value="MinistryLeader">Ministry Leader</SelectItem>
                                 <SelectItem value="Admin">Admin</SelectItem>
+                                <SelectItem value="Director">Director</SelectItem>
+                                <SelectItem value="SuperOrg">Super Org</SelectItem>
                               </SelectContent>
                             </Select>
                           </TableCell>
                           <TableCell>
-                            {user.is_director ? (
-                              <Badge variant="default">Director</Badge>
-                            ) : (
-                              <Badge variant="secondary">Member</Badge>
-                            )}
+                            <Badge variant="outline">
+                              {user.ministry_id ? 'Assigned' : 'No Ministry'}
+                            </Badge>
                           </TableCell>
                           <TableCell>
                             <Button size="sm" variant="outline" disabled>

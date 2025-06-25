@@ -24,7 +24,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (profile?.organisation_id) {
+    if (profile) {
       fetchMinistries();
     }
   }, [profile]);
@@ -38,7 +38,6 @@ const Dashboard = () => {
           name,
           description
         `)
-        .eq('organisation_id', profile?.organisation_id)
         .order('name');
 
       if (error) throw error;
@@ -68,7 +67,7 @@ const Dashboard = () => {
     navigate('/');
   };
 
-  const canAccessAdmin = profile?.role === 'Admin' || profile?.is_director;
+  const canAccessAdmin = ['Admin', 'Director', 'SuperOrg'].includes(profile?.role || '');
 
   return (
     <ProtectedRoute>
@@ -88,7 +87,6 @@ const Dashboard = () => {
               <div className="flex items-center space-x-4">
                 <Badge variant="secondary" className="px-3 py-1">
                   {profile?.role}
-                  {profile?.is_director && " (Director)"}
                 </Badge>
                 <Button onClick={handleSignOut} variant="outline">
                   Sign Out

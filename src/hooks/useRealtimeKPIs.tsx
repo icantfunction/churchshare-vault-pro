@@ -20,19 +20,18 @@ export const useRealtimeKPIs = () => {
   const { profile } = useAuth();
 
   const refreshKPIs = async () => {
-    if (!profile?.organisation_id) return;
+    if (!profile) return;
 
     try {
-      // For admins/directors, show all org files. For others, show only their files
-      const isAdmin = profile.role === 'Admin' || profile.is_director;
+      // Check if user is admin/director (can see all files) or regular user (only their files)
+      const isDirector = ['Director', 'SuperOrg', 'Admin'].includes(profile.role);
       
       let query = supabase
         .from('files')
-        .select('created_at, uploader_id')
-        .eq('organisation_id', profile.organisation_id);
+        .select('created_at, uploader_id');
 
-      // If not admin, filter to only user's files
-      if (!isAdmin) {
+      // If not admin/director, filter to only user's files
+      if (!isDirector) {
         query = query.eq('uploader_id', profile.id);
       }
 
@@ -64,12 +63,12 @@ export const useRealtimeKPIs = () => {
   };
 
   useEffect(() => {
-    if (!profile?.organisation_id) return;
+    if (!profile) return;
 
     // Initial load
     refreshKPIs();
 
-    // Set up realtime subscription
+    // Set up realtime subscription for files table
     const channel = supabase
       .channel('files_updates')
       .on(
@@ -77,8 +76,7 @@ export const useRealtimeKPIs = () => {
         {
           event: '*',
           schema: 'public',
-          table: 'files',
-          filter: `organisation_id=eq.${profile.organisation_id}`
+          table: 'files'
         },
         () => {
           console.log('Files changed, refreshing KPIs...');
@@ -90,7 +88,7 @@ export const useRealtimeKPIs = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [profile?.organisation_id, profile?.role, profile?.is_director]);
+  }, [profile?.id, profile?.role]);
 
   return { kpiData, refreshKPIs };
 };
