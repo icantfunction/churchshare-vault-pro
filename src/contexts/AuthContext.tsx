@@ -20,6 +20,7 @@ interface AuthContextType {
   profile: UserProfile | null;
   session: Session | null;
   loading: boolean;
+  profileError: string | null;
   signOut: () => Promise<void>;
 }
 
@@ -38,10 +39,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   const fetchUserProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
     try {
       console.log('Fetching profile for user:', userId);
+      setProfileError(null);
+      
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -50,6 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         console.error('Error fetching user profile:', error);
+        setProfileError(error.message);
         return null;
       }
 
@@ -67,6 +72,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } as UserProfile;
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);
+      setProfileError('Failed to load user profile');
       return null;
     }
   }, []);
@@ -92,11 +98,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.error('Error fetching profile:', error);
           if (mounted) {
             setProfile(null);
+            setProfileError('Failed to load user profile');
           }
         }
       } else {
         if (mounted) {
           setProfile(null);
+          setProfileError(null);
         }
       }
       
@@ -152,7 +160,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, profile, session, loading, signOut }}>
+    <AuthContext.Provider value={{ user, profile, session, loading, profileError, signOut }}>
       {children}
     </AuthContext.Provider>
   );

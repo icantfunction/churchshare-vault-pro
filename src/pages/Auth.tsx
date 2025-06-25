@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -16,22 +17,22 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, profile, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading, profileError } = useAuth();
   const redirectAttempted = useRef(false);
 
-  // Redirect authenticated users to dashboard only when both user and profile are loaded
+  // Redirect authenticated users to dashboard
   useEffect(() => {
     // Only redirect if:
     // 1. Auth is not loading
     // 2. We have a user
-    // 3. We have a profile (or explicitly null profile after loading)
+    // 3. Either we have a profile OR there's a profile error (meaning we tried to load it)
     // 4. We haven't already attempted redirect
-    if (!authLoading && user && profile && !redirectAttempted.current) {
-      console.log('User and profile loaded, redirecting to dashboard');
+    if (!authLoading && user && (profile || profileError) && !redirectAttempted.current) {
+      console.log('User authenticated, redirecting to dashboard');
       redirectAttempted.current = true;
       navigate("/dashboard", { replace: true });
     }
-  }, [user, profile, authLoading, navigate]);
+  }, [user, profile, profileError, authLoading, navigate]);
 
   // Reset redirect flag when user changes (for proper cleanup)
   useEffect(() => {
@@ -127,8 +128,8 @@ const Auth = () => {
     );
   }
 
-  // If user is authenticated but profile is still loading, show loading
-  if (user && !profile && !authLoading) {
+  // If user is authenticated but we're still trying to load profile, show loading
+  if (user && !profile && !profileError && !authLoading) {
     return (
       <div className="min-h-screen bg-background font-poppins flex items-center justify-center p-4">
         <div className="text-center">
@@ -139,8 +140,8 @@ const Auth = () => {
     );
   }
 
-  // If user is already authenticated and redirect was attempted, show redirecting message
-  if (user && profile && redirectAttempted.current) {
+  // If user is already authenticated (with or without profile), redirect them
+  if (user && redirectAttempted.current) {
     return (
       <div className="min-h-screen bg-background font-poppins flex items-center justify-center p-4">
         <div className="text-center">
@@ -169,6 +170,14 @@ const Auth = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {profileError && (
+              <Alert className="mb-4" variant="destructive">
+                <AlertDescription>
+                  Profile access limited: {profileError}. You can still use the application.
+                </AlertDescription>
+              </Alert>
+            )}
+            
             <Tabs defaultValue="signin" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="signin">Sign In</TabsTrigger>
