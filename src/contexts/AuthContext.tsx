@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -39,7 +39,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchUserProfile = async (userId: string): Promise<UserProfile | null> => {
+  const fetchUserProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
     try {
       console.log('Fetching profile for user:', userId);
       const { data, error } = await supabase
@@ -69,40 +69,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Error in fetchUserProfile:', error);
       return null;
     }
-  };
+  }, []);
 
-  const handleAuthStateChange = async (event: string, session: Session | null) => {
+  const handleAuthStateChange = useCallback(async (event: string, session: Session | null) => {
     console.log('Auth state changed:', event, !!session);
     
     setSession(session);
     setUser(session?.user ?? null);
     
     if (session?.user) {
-      // Fetch profile with timeout to prevent infinite loading
-      setTimeout(async () => {
-        try {
-          const profile = await fetchUserProfile(session.user.id);
-          setProfile(profile);
-        } catch (error) {
-          console.error('Error fetching profile:', error);
-          setProfile(null);
-        } finally {
-          setLoading(false);
-        }
-      }, 0);
+      try {
+        const profile = await fetchUserProfile(session.user.id);
+        setProfile(profile);
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+        setProfile(null);
+      }
     } else {
       setProfile(null);
-      setLoading(false);
     }
-  };
+    
+    setLoading(false);
+  }, [fetchUserProfile]);
 
   useEffect(() => {
     let mounted = true;
-
+    
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
 
-    // Initialize auth state
+    // Get initial session
     const initializeAuth = async () => {
       try {
         console.log('Initializing auth...');
@@ -125,22 +121,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initializeAuth();
 
-    // Timeout protection - ensure loading doesn't stay true forever
-    const timeoutId = setTimeout(() => {
-      if (mounted && loading) {
-        console.log('Auth initialization timeout - setting loading to false');
-        setLoading(false);
-      }
-    }, 5000);
-
     return () => {
       mounted = false;
       subscription.unsubscribe();
-      clearTimeout(timeoutId);
     };
-  }, []);
+  }, [handleAuthStateChange]);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     try {
       setLoading(true);
       const { error } = await supabase.auth.signOut();
@@ -152,7 +139,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, profile, session, loading, signOut }}>
