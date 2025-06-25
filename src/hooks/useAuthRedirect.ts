@@ -14,7 +14,7 @@ export const useAuthRedirect = () => {
   const hasRedirectedRef = useRef(false);
   const toastShownRef = useRef(false);
 
-  console.log('[DEBUG-301] useAuthRedirect: Initial state', {
+  console.log('[DEBUG-301] useAuthRedirect: Current state', {
     pathname: location.pathname,
     hasUser: !!user,
     authLoading,
@@ -23,17 +23,18 @@ export const useAuthRedirect = () => {
     profileError
   });
 
-  // Reset redirect flag when location changes or user changes
+  // Reset redirect flags when location changes
   useEffect(() => {
-    console.log('[DEBUG-302] useAuthRedirect: Location/user change effect triggered');
+    console.log('[DEBUG-302] useAuthRedirect: Location change effect triggered');
     
     if (location.pathname !== "/auth" && location.pathname !== "/login") {
-      console.log('[DEBUG-303] useAuthRedirect: Resetting redirect flags (location change)');
+      console.log('[DEBUG-303] useAuthRedirect: Resetting redirect flags');
       hasRedirectedRef.current = false;
       toastShownRef.current = false;
     }
   }, [location.pathname]);
 
+  // Reset redirect flags when user changes
   useEffect(() => {
     console.log('[DEBUG-304] useAuthRedirect: User change effect triggered');
     
@@ -44,35 +45,27 @@ export const useAuthRedirect = () => {
     }
   }, [user?.id]);
 
-  // Handle redirect logic with improved guards and timeout protection
+  // Handle redirect logic
   useEffect(() => {
     console.log('[DEBUG-306] useAuthRedirect: Main redirect effect triggered');
-    console.log('[DEBUG-307] useAuthRedirect: Guard conditions check', {
-      hasRedirected: hasRedirectedRef.current,
-      authLoading,
-      hasUser: !!user,
-      pathname: location.pathname,
-      isAuthPage: location.pathname === "/auth" || location.pathname === "/login"
-    });
     
-    // Strict guards to prevent infinite loops and ensure proper conditions
+    // Guard conditions to prevent infinite loops
     if (
       hasRedirectedRef.current || 
       authLoading || 
       !user || 
       (location.pathname !== "/auth" && location.pathname !== "/login")
     ) {
-      console.log('[DEBUG-308] useAuthRedirect: Early return due to guard conditions');
+      console.log('[DEBUG-307] useAuthRedirect: Early return due to guard conditions');
       return;
     }
 
-    console.log('[DEBUG-309] useAuthRedirect: User authenticated, processing redirect');
-    console.log('[DEBUG-901] State transition: Unauthenticated → Authenticated');
+    console.log('[DEBUG-308] useAuthRedirect: User authenticated, processing redirect');
     hasRedirectedRef.current = true;
     
     // Show appropriate toast based on profile state
     if (!toastShownRef.current) {
-      console.log('[DEBUG-310] useAuthRedirect: Showing welcome toast');
+      console.log('[DEBUG-309] useAuthRedirect: Showing welcome toast');
       toastShownRef.current = true;
       
       if (profile) {
@@ -87,7 +80,6 @@ export const useAuthRedirect = () => {
           variant: "destructive",
         });
       } else {
-        // User authenticated but profile still loading
         toast({
           title: "Welcome!",
           description: "Successfully signed in to ChurchShare",
@@ -95,19 +87,16 @@ export const useAuthRedirect = () => {
       }
     }
 
-    // Use setTimeout to prevent immediate re-render issues with timeout protection
+    // Navigate to dashboard
     const timeoutId = setTimeout(() => {
-      console.log('[DEBUG-311] useAuthRedirect: Executing navigation timeout');
+      console.log('[DEBUG-310] useAuthRedirect: Executing navigation');
       if (hasRedirectedRef.current) {
-        console.log('[DEBUG-312] useAuthRedirect: Navigating to dashboard');
-        console.time('[DEBUG-804] Navigation timing');
+        console.log('[DEBUG-311] useAuthRedirect: Navigating to dashboard');
         navigate('/dashboard', { replace: true });
-        console.timeEnd('[DEBUG-804] Navigation timing');
       }
     }, 100);
 
     return () => {
-      console.log('[DEBUG-313] useAuthRedirect: Cleaning up timeout');
       clearTimeout(timeoutId);
     };
   }, [user, authLoading, location.pathname, navigate, toast, profile, profileError]);
@@ -118,6 +107,6 @@ export const useAuthRedirect = () => {
     shouldShowAuthForm: !authLoading && !user && !hasRedirectedRef.current
   };
 
-  console.log('[DEBUG-314] useAuthRedirect: Returning value', returnValue);
+  console.log('[DEBUG-312] useAuthRedirect: Returning value', returnValue);
   return returnValue;
 };
