@@ -2,8 +2,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import AuthLoadingSpinner from "@/components/auth/AuthLoadingSpinner";
 import AuthHeader from "@/components/auth/AuthHeader";
 import SignInForm from "@/components/auth/SignInForm";
@@ -23,15 +22,15 @@ const Auth = () => {
     return <AuthLoadingSpinner message="Loading..." />;
   }
 
-  // Redirect to dashboard if authenticated and ready
-  if (canRedirect) {
-    console.log('Auth page: Redirecting to dashboard via Navigate component');
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  // Show redirecting message if user is authenticated but waiting for profile/redirect
+  // Show redirecting message if user is authenticated but waiting for redirect
   if (shouldRedirect && !canRedirect) {
     console.log('Auth page: User authenticated, waiting for profile or redirect');
+    return <AuthLoadingSpinner message="Redirecting to dashboard..." />;
+  }
+
+  // Don't render auth form if redirect is happening
+  if (canRedirect) {
+    console.log('Auth page: Redirect ready, showing loading screen');
     return <AuthLoadingSpinner message="Redirecting to dashboard..." />;
   }
 
