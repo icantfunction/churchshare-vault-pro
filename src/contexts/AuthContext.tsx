@@ -72,35 +72,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let mounted = true;
 
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state changed:', event, !!session);
-        
-        if (!mounted) return;
-
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          // Fetch user profile from our users table
-          const profile = await fetchUserProfile(session.user.id);
-          if (mounted) {
-            setProfile(profile);
-            setLoading(false);
-          }
-        } else {
-          if (mounted) {
-            setProfile(null);
-            setLoading(false);
-          }
-        }
-      }
-    );
-
-    // Check for existing session
     const initializeAuth = async () => {
       try {
+        // First, get the current session
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -113,19 +87,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (!mounted) return;
 
+        // Set session and user immediately
         setSession(session);
         setUser(session?.user ?? null);
         
+        // If we have a user, fetch their profile
         if (session?.user) {
           const profile = await fetchUserProfile(session.user.id);
           if (mounted) {
             setProfile(profile);
-            setLoading(false);
           }
-        } else {
-          if (mounted) {
-            setLoading(false);
-          }
+        }
+        
+        // Always set loading to false after initialization
+        if (mounted) {
+          setLoading(false);
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
@@ -135,6 +111,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state changed:', event, !!session);
+        
+        if (!mounted) return;
+
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          // Use setTimeout to avoid blocking the auth state change
+          setTimeout(async () => {
+            if (mounted) {
+              const profile = await fetchUserProfile(session.user.id);
+              if (mounted) {
+                setProfile(profile);
+              }
+            }
+          }, 0);
+        } else {
+          setProfile(null);
+        }
+      }
+    );
+
+    // Initialize auth
     initializeAuth();
 
     return () => {
