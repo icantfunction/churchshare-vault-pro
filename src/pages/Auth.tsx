@@ -19,15 +19,19 @@ const Auth = () => {
   const { user, profile, loading: authLoading } = useAuth();
   const redirectAttempted = useRef(false);
 
-  // Redirect authenticated users to dashboard
+  // Redirect authenticated users to dashboard only when both user and profile are loaded
   useEffect(() => {
-    // Only redirect if we have a user, auth is not loading, and we haven't already attempted redirect
-    if (!authLoading && user && !redirectAttempted.current) {
-      console.log('User authenticated, redirecting to dashboard');
+    // Only redirect if:
+    // 1. Auth is not loading
+    // 2. We have a user
+    // 3. We have a profile (or explicitly null profile after loading)
+    // 4. We haven't already attempted redirect
+    if (!authLoading && user && profile && !redirectAttempted.current) {
+      console.log('User and profile loaded, redirecting to dashboard');
       redirectAttempted.current = true;
       navigate("/dashboard", { replace: true });
     }
-  }, [user, authLoading, navigate]);
+  }, [user, profile, authLoading, navigate]);
 
   // Reset redirect flag when user changes (for proper cleanup)
   useEffect(() => {
@@ -123,8 +127,20 @@ const Auth = () => {
     );
   }
 
+  // If user is authenticated but profile is still loading, show loading
+  if (user && !profile && !authLoading) {
+    return (
+      <div className="min-h-screen bg-background font-poppins flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
+
   // If user is already authenticated and redirect was attempted, show redirecting message
-  if (user && redirectAttempted.current) {
+  if (user && profile && redirectAttempted.current) {
     return (
       <div className="min-h-screen bg-background font-poppins flex items-center justify-center p-4">
         <div className="text-center">
