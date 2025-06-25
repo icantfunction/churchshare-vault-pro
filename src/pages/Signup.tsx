@@ -1,12 +1,19 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+
+interface Ministry {
+  id: string;
+  name: string;
+}
 
 const Signup = () => {
   const [formData, setFormData] = useState({
@@ -17,9 +24,12 @@ const Signup = () => {
     password: "",
     confirmPassword: "",
     inviteCode: "",
-    isDirector: false
+    isDirector: false,
+    ministryId: ""
   });
+  const [ministries, setMinistries] = useState<Ministry[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMinistries, setLoadingMinistries] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
@@ -31,6 +41,35 @@ const Signup = () => {
       setFormData(prev => ({ ...prev, inviteCode: code }));
     }
   }, [searchParams]);
+
+  // Fetch ministries when not director
+  useEffect(() => {
+    if (!formData.isDirector) {
+      fetchMinistries();
+    }
+  }, [formData.isDirector]);
+
+  const fetchMinistries = async () => {
+    setLoadingMinistries(true);
+    try {
+      const { data, error } = await supabase
+        .from('ministries')
+        .select('id, name')
+        .order('name');
+
+      if (error) throw error;
+      setMinistries(data || []);
+    } catch (error) {
+      console.error('Error fetching ministries:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load ministries",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingMinistries(false);
+    }
+  };
 
   const validateForm = () => {
     if (!formData.firstName || !formData.lastName || !formData.dob || !formData.email || !formData.password) {
@@ -74,13 +113,24 @@ const Signup = () => {
       return false;
     }
 
-    if (!formData.isDirector && !formData.inviteCode) {
-      toast({
-        title: "Error",
-        description: "Please enter an invite code or check the director box",
-        variant: "destructive",
-      });
-      return false;
+    if (!formData.isDirector) {
+      if (!formData.inviteCode) {
+        toast({
+          title: "Error",
+          description: "Please enter an invite code or check the director box",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      if (!formData.ministryId) {
+        toast({
+          title: "Error",
+          description: "Please select a ministry",
+          variant: "destructive",
+        });
+        return false;
+      }
     }
 
     return true;
@@ -94,6 +144,31 @@ const Signup = () => {
     setLoading(true);
 
     try {
+      // Determine user role
+      let userRole = 'Member';
+      let ministryId = formData.ministryId;
+
+      if (formData.isDirector) {
+        userRole = 'Director';
+        ministryId = null; // Directors don't belong to a specific ministry
+      } else {
+        // Validate invite code and get role from it
+        const { data: inviteData, error: inviteError } = await supabase.functions.invoke('redeem-invite', {
+          body: { code: formData.inviteCode }
+        });
+
+        if (inviteError || !inviteData) {
+          toast({
+            title: "Error",
+            description: inviteData?.error || "Invalid invite code",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        userRole = inviteData.role || 'Member';
+      }
+
       // Step 1: Sign up with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
@@ -102,7 +177,9 @@ const Signup = () => {
           data: {
             first_name: formData.firstName,
             last_name: formData.lastName,
-            dob: formData.dob
+            date_of_birth: formData.dob,
+            role: userRole,
+            ministry_id: ministryId
           },
           emailRedirectTo: `${window.location.origin}/dashboard`
         }
@@ -124,73 +201,6 @@ const Signup = () => {
           variant: "destructive",
         });
         return;
-      }
-
-      // Step 2: Handle organization setup
-      let organisationId: string;
-      let userRole = 'Member';
-
-      if (formData.isDirector) {
-        // Create new organization
-        const { data: orgData, error: orgError } = await supabase
-          .from('organisations')
-          .insert({
-            name: `${formData.firstName} ${formData.lastName}'s Organization`
-          })
-          .select()
-          .single();
-
-        if (orgError) {
-          console.error('Error creating organization:', orgError);
-          toast({
-            title: "Error",
-            description: "Failed to create organization",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        organisationId = orgData.id;
-        userRole = 'Admin';
-      } else {
-        // Redeem invite code
-        const { data: inviteData, error: inviteError } = await supabase.functions.invoke('redeem-invite', {
-          body: { code: formData.inviteCode }
-        });
-
-        if (inviteError || !inviteData) {
-          toast({
-            title: "Error",
-            description: inviteData?.error || "Invalid invite code",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        organisationId = inviteData.organisation_id;
-        userRole = inviteData.role;
-      }
-
-      // Step 3: Update user profile
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          dob: formData.dob,
-          organisation_id: organisationId,
-          role: userRole,
-          is_director: formData.isDirector
-        })
-        .eq('id', authData.user.id);
-
-      if (updateError) {
-        console.error('Error updating user profile:', updateError);
-        toast({
-          title: "Warning",
-          description: "Account created but profile update failed. Please contact support.",
-          variant: "destructive",
-        });
       }
 
       toast({
@@ -226,7 +236,7 @@ const Signup = () => {
 
         <Card className="shadow-xl border-0">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Sign Up</CardTitle>
+            <CardTitle className="text-2xl">Create Account</CardTitle>
             <CardDescription>
               Join your church's media sharing platform
             </CardDescription>
@@ -323,33 +333,55 @@ const Signup = () => {
               </div>
 
               {!formData.isDirector && (
-                <div className="space-y-2">
-                  <Label htmlFor="inviteCode">Invite Code *</Label>
-                  <Input
-                    id="inviteCode"
-                    type="text"
-                    placeholder="Enter your invite code"
-                    value={formData.inviteCode}
-                    onChange={(e) => handleInputChange('inviteCode', e.target.value)}
-                    required={!formData.isDirector}
-                    className="h-12 rounded-xl"
-                  />
-                </div>
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="inviteCode">Invite Code *</Label>
+                    <Input
+                      id="inviteCode"
+                      type="text"
+                      placeholder="Enter your invite code"
+                      value={formData.inviteCode}
+                      onChange={(e) => handleInputChange('inviteCode', e.target.value)}
+                      required={!formData.isDirector}
+                      className="h-12 rounded-xl"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="ministry">Ministry *</Label>
+                    <Select 
+                      value={formData.ministryId} 
+                      onValueChange={(value) => handleInputChange('ministryId', value)}
+                      required
+                    >
+                      <SelectTrigger className="h-12 rounded-xl">
+                        <SelectValue placeholder={loadingMinistries ? "Loading ministries..." : "Select a ministry"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ministries.map((ministry) => (
+                          <SelectItem key={ministry.id} value={ministry.id}>
+                            {ministry.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
               )}
 
               <Button
                 type="submit"
                 className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 text-lg"
-                disabled={loading}
+                disabled={loading || (loadingMinistries && !formData.isDirector)}
               >
-                {loading ? "Creating account..." : "Sign Up"}
+                {loading ? "Creating account..." : "Create Account"}
               </Button>
             </form>
 
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
                 Already have an account?{" "}
-                <Link to="/auth" className="text-primary hover:underline">
+                <Link to="/auth" className="text-primary hover:underline font-medium">
                   Sign in
                 </Link>
               </p>
