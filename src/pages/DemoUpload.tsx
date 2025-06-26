@@ -19,13 +19,16 @@ const DemoUpload = () => {
   const { addDemoFile, getUserUploadedFileCount } = useDemoContext();
   const { toast } = useToast();
 
+  // Get actual user-uploaded file count (excluding sample files)
   const userUploadedCount = getUserUploadedFileCount();
+
+  console.log('[DEBUG] DemoUpload - userUploadedCount:', userUploadedCount, 'pending files:', files.length);
 
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     const droppedFiles = Array.from(e.dataTransfer.files);
     
-    // Check demo limit
+    // Check demo limit - only user-uploaded files count toward the limit
     if (userUploadedCount + files.length + droppedFiles.length > 2) {
       console.log('[DEBUG] Drop rejected - would exceed limit:', {
         current: userUploadedCount,
@@ -49,7 +52,7 @@ const DemoUpload = () => {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files);
       
-      // Check demo limit
+      // Check demo limit - only user-uploaded files count toward the limit
       if (userUploadedCount + files.length + selectedFiles.length > 2) {
         console.log('[DEBUG] File selection rejected - would exceed limit:', {
           current: userUploadedCount,
