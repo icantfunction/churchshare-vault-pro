@@ -63,8 +63,9 @@ const Dashboard = () => {
   };
 
   const handleSignOut = async () => {
+    console.log('[DEBUG-DASHBOARD] Sign out initiated from Dashboard');
+    // Just call signOut - let the auth system handle navigation
     await signOut();
-    navigate('/');
   };
 
   const canAccessAdmin = ['Admin', 'Director', 'SuperOrg'].includes(profile?.role || '');

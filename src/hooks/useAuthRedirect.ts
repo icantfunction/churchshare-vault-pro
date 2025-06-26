@@ -13,6 +13,7 @@ export const useAuthRedirect = () => {
   const { user, profile, loading: authLoading, profileError } = useAuth();
   const hasRedirectedRef = useRef(false);
   const toastShownRef = useRef(false);
+  const lastUserIdRef = useRef<string | null>(null);
 
   console.log('[DEBUG-301] useAuthRedirect: Current state', {
     pathname: location.pathname,
@@ -20,7 +21,9 @@ export const useAuthRedirect = () => {
     authLoading,
     hasRedirected: hasRedirectedRef.current,
     toastShown: toastShownRef.current,
-    profileError
+    profileError,
+    lastUserId: lastUserIdRef.current,
+    currentUserId: user?.id
   });
 
   // Reset redirect flags when location changes
@@ -34,62 +37,76 @@ export const useAuthRedirect = () => {
     }
   }, [location.pathname]);
 
-  // Reset redirect flags when user changes
+  // Reset redirect flags when user changes (including sign out)
   useEffect(() => {
     console.log('[DEBUG-304] useAuthRedirect: User change effect triggered');
     
-    if (!user) {
-      console.log('[DEBUG-305] useAuthRedirect: Resetting redirect flags (no user)');
+    const currentUserId = user?.id || null;
+    const previousUserId = lastUserIdRef.current;
+    
+    // If user changed (signed out or different user signed in)
+    if (currentUserId !== previousUserId) {
+      console.log('[DEBUG-305] useAuthRedirect: User ID changed, resetting flags', {
+        previous: previousUserId,
+        current: currentUserId
+      });
       hasRedirectedRef.current = false;
       toastShownRef.current = false;
+      lastUserIdRef.current = currentUserId;
     }
   }, [user?.id]);
 
-  // Handle redirect logic - key fix: don't wait for profile, just need valid user session
+  // Handle redirect logic - only redirect to dashboard when authenticated and on auth pages
   useEffect(() => {
     console.log('[DEBUG-306] useAuthRedirect: Main redirect effect triggered');
     
-    // Guard conditions to prevent infinite loops
-    if (
-      hasRedirectedRef.current || 
-      authLoading || 
-      !user || 
-      (location.pathname !== "/auth" && location.pathname !== "/login")
-    ) {
-      console.log('[DEBUG-307] useAuthRedirect: Early return due to guard conditions');
+    // Only process redirects if we're on auth pages
+    const isOnAuthPage = location.pathname === "/auth" || location.pathname === "/login";
+    
+    if (!isOnAuthPage) {
+      console.log('[DEBUG-307] useAuthRedirect: Not on auth page, skipping redirect logic');
       return;
     }
 
-    console.log('[DEBUG-308] useAuthRedirect: User authenticated, processing redirect');
-    hasRedirectedRef.current = true;
-    
-    // Show appropriate toast based on profile state
-    if (!toastShownRef.current) {
-      console.log('[DEBUG-309] useAuthRedirect: Showing welcome toast');
-      toastShownRef.current = true;
-      
-      if (profile) {
-        toast({
-          title: "Welcome back!",
-          description: "Successfully signed in to ChurchShare",
-        });
-      } else if (profileError) {
-        toast({
-          title: "Signed in successfully",
-          description: "Your profile is still loading, but you can use the app.",
-          variant: "default",
-        });
-      } else {
-        toast({
-          title: "Welcome!",
-          description: "Successfully signed in to ChurchShare",
-        });
-      }
+    // Guard conditions to prevent infinite loops
+    if (hasRedirectedRef.current || authLoading) {
+      console.log('[DEBUG-308] useAuthRedirect: Early return due to guard conditions');
+      return;
     }
 
-    // Navigate to dashboard immediately - don't wait for profile
-    console.log('[DEBUG-310] useAuthRedirect: Executing navigation');
-    navigate('/dashboard', { replace: true });
+    // If user is authenticated and on auth page, redirect to dashboard
+    if (user && isOnAuthPage) {
+      console.log('[DEBUG-309] useAuthRedirect: User authenticated on auth page, processing redirect');
+      hasRedirectedRef.current = true;
+      
+      // Show appropriate toast based on profile state
+      if (!toastShownRef.current) {
+        console.log('[DEBUG-310] useAuthRedirect: Showing welcome toast');
+        toastShownRef.current = true;
+        
+        if (profile) {
+          toast({
+            title: "Welcome back!",
+            description: "Successfully signed in to ChurchShare",
+          });
+        } else if (profileError) {
+          toast({
+            title: "Signed in successfully",
+            description: "Your profile is still loading, but you can use the app.",
+            variant: "default",
+          });
+        } else {
+          toast({
+            title: "Welcome!",
+            description: "Successfully signed in to ChurchShare",
+          });
+        }
+      }
+
+      // Navigate to dashboard
+      console.log('[DEBUG-311] useAuthRedirect: Executing navigation to dashboard');
+      navigate('/dashboard', { replace: true });
+    }
   }, [user, authLoading, location.pathname, navigate, toast, profile, profileError]);
 
   const returnValue = {

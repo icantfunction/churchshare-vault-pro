@@ -58,7 +58,11 @@ export const useAuthState = () => {
     console.log('[DEBUG-129] AuthProvider: Sign out initiated');
     
     try {
+      // Clear state immediately to prevent conflicts
       setLoading(true);
+      setProfile(null);
+      setProfileError(null);
+      
       const { error } = await supabase.auth.signOut();
       
       if (error) {

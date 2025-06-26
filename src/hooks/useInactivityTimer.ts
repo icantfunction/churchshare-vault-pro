@@ -25,6 +25,7 @@ export const useInactivityTimer = (options: UseInactivityTimerOptions = {}) => {
   const warningTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isActiveRef = useRef(true);
   const hasShownWarningRef = useRef(false);
+  const isSigningOutRef = useRef(false);
 
   const clearTimers = useCallback(() => {
     if (timerRef.current) {
@@ -39,6 +40,13 @@ export const useInactivityTimer = (options: UseInactivityTimerOptions = {}) => {
   }, []);
 
   const handleAutoSignOut = useCallback(async () => {
+    // Prevent multiple sign out attempts
+    if (isSigningOutRef.current) {
+      console.log('[DEBUG-INACTIVITY] Sign out already in progress, skipping');
+      return;
+    }
+
+    isSigningOutRef.current = true;
     console.log('[DEBUG-INACTIVITY] Auto sign-out triggered due to inactivity');
     
     toast({
@@ -47,12 +55,21 @@ export const useInactivityTimer = (options: UseInactivityTimerOptions = {}) => {
       variant: "default",
     });
 
-    await signOut();
-    onTimeout?.();
+    try {
+      await signOut();
+      onTimeout?.();
+    } catch (error) {
+      console.error('[DEBUG-INACTIVITY] Error during auto sign out:', error);
+    } finally {
+      // Reset flag after a delay to prevent issues
+      setTimeout(() => {
+        isSigningOutRef.current = false;
+      }, 1000);
+    }
   }, [signOut, toast, onTimeout]);
 
   const showWarning = useCallback(() => {
-    if (!hasShownWarningRef.current) {
+    if (!hasShownWarningRef.current && !isSigningOutRef.current) {
       hasShownWarningRef.current = true;
       console.log('[DEBUG-INACTIVITY] Showing inactivity warning');
       
@@ -67,10 +84,16 @@ export const useInactivityTimer = (options: UseInactivityTimerOptions = {}) => {
   }, [toast, onWarning]);
 
   const resetTimer = useCallback(() => {
-    if (!user || !isActiveRef.current) return;
+    if (!user || !isActiveRef.current || isSigningOutRef.current) {
+      return;
+    }
+
+    // Throttle timer resets to prevent excessive logging
+    if (timerRef.current) {
+      clearTimers();
+    }
 
     console.log('[DEBUG-INACTIVITY] Resetting inactivity timer');
-    clearTimers();
 
     // Set warning timer
     warningTimerRef.current = setTimeout(() => {
@@ -84,14 +107,20 @@ export const useInactivityTimer = (options: UseInactivityTimerOptions = {}) => {
   }, [user, timeout, warningTime, showWarning, handleAutoSignOut, clearTimers]);
 
   const handleActivity = useCallback(() => {
-    if (!user) return;
+    if (!user || isSigningOutRef.current) {
+      return;
+    }
     
-    console.log('[DEBUG-INACTIVITY] User activity detected');
+    // Reset warning flag on activity
     hasShownWarningRef.current = false;
     resetTimer();
   }, [user, resetTimer]);
 
   const handleVisibilityChange = useCallback(() => {
+    if (isSigningOutRef.current) {
+      return;
+    }
+
     if (document.hidden) {
       console.log('[DEBUG-INACTIVITY] Page hidden, pausing timer');
       isActiveRef.current = false;
@@ -109,6 +138,7 @@ export const useInactivityTimer = (options: UseInactivityTimerOptions = {}) => {
     if (!user) {
       console.log('[DEBUG-INACTIVITY] No user, clearing timers');
       clearTimers();
+      isSigningOutRef.current = false;
       return;
     }
 
@@ -143,6 +173,7 @@ export const useInactivityTimer = (options: UseInactivityTimerOptions = {}) => {
       });
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       clearTimers();
+      isSigningOutRef.current = false;
     };
   }, [user, handleActivity, handleVisibilityChange, resetTimer, clearTimers]);
 
