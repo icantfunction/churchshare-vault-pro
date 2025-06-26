@@ -15,13 +15,14 @@ const MyFiles = () => {
   const [filterType, setFilterType] = useState("all");
   const [filterMinistry, setFilterMinistry] = useState("all");
 
-  // Sample files for non-demo mode
+  // Sample files for non-demo mode - now with ministry_id for consistency
   const sampleFiles = [
     {
       id: 1,
       name: "Youth_Camp_2024_Group_Photo.jpg",
       type: "image",
       ministry: "Youth Ministry",
+      ministry_id: "youth", // Added for consistency
       eventDate: "2024-03-15",
       uploadedBy: "Sarah Johnson",
       size: "4.2 MB",
@@ -32,6 +33,7 @@ const MyFiles = () => {
       name: "Sunday_Worship_Recording.mp4", 
       type: "video",
       ministry: "Worship Team",
+      ministry_id: "worship", // Added for consistency
       eventDate: "2024-03-10",
       uploadedBy: "Mike Wilson",
       size: "125 MB",
@@ -42,6 +44,7 @@ const MyFiles = () => {
       name: "Childrens_Easter_Program.pdf",
       type: "document", 
       ministry: "Children's Ministry",
+      ministry_id: "children", // Added for consistency
       eventDate: "2024-03-08",
       uploadedBy: "Lisa Chen",
       size: "2.1 MB",
@@ -52,6 +55,7 @@ const MyFiles = () => {
       name: "Community_Outreach_Photos.zip",
       type: "archive",
       ministry: "Outreach Events", 
+      ministry_id: "outreach", // Added for consistency
       eventDate: "2024-03-05",
       uploadedBy: "David Martinez",
       size: "45 MB",
@@ -73,7 +77,7 @@ const MyFiles = () => {
       uploadedBy: file.uploaded_by,
       size: formatFileSize(file.file_size),
       thumbnail: file.thumbnail || file.file_url,
-      ministry_id: file.ministry_id, // Keep original ministry_id for filtering
+      ministry_id: file.ministry_id, // Consistent property
     };
   }) : sampleFiles;
 
@@ -93,15 +97,13 @@ const MyFiles = () => {
     
     const matchesType = filterType === "all" || file.type === filterType;
     
-    // Fix ministry filtering to use ministry_id if available, otherwise fall back to name matching
-    const matchesMinistry = filterMinistry === "all" || 
-      (isDemoMode && file.ministry_id === filterMinistry) ||
-      (!isDemoMode && file.ministry.toLowerCase().replace(/[\s']/g, '') === filterMinistry);
+    // Use ministry_id for filtering since all files now have it
+    const matchesMinistry = filterMinistry === "all" || file.ministry_id === filterMinistry;
     
     console.log('[DEBUG] File filter check:', {
       fileName: file.name,
       ministry: file.ministry,
-      ministry_id: file.ministry_id || 'N/A',
+      ministry_id: file.ministry_id,
       filterMinistry,
       matchesMinistry,
       matchesSearch,
@@ -201,7 +203,7 @@ const MyFiles = () => {
         <div className="mb-6">
           <p className="text-gray-600">
             Showing {filteredFiles.length} of {transformedDemoFiles.length} files
-            {isDemoMode && ` (${demoFiles.filter(f => !f.id.startsWith('sample-file-')).length} user-uploaded)`}
+            {isDemoMode && ` (${userUploadedCount} user-uploaded)`}
           </p>
         </div>
 
