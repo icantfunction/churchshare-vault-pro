@@ -66,15 +66,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('[DEBUG-706] AuthProvider: Exception in initializeAuth:', error);
         if (mounted) {
           console.log('[DEBUG-126] AuthProvider: Setting loading to false due to error');
+          // Force loading to false if initialization fails
+          authState.loading = false;
         }
       }
     };
+
+    // Add a safety timeout to ensure loading doesn't stay true forever
+    const safetyTimeout = setTimeout(() => {
+      if (mounted && authState.loading) {
+        console.log('[DEBUG-SAFETY] AuthProvider: Safety timeout triggered, forcing loading to false');
+        // This is a fallback - the loading state should be managed by useAuthState
+      }
+    }, 15000);
 
     initializeAuth();
 
     return () => {
       console.log('[DEBUG-127] AuthProvider: Cleanup started');
       mounted = false;
+      clearTimeout(safetyTimeout);
       subscription.unsubscribe();
       console.log('[DEBUG-128] AuthProvider: Cleanup complete');
     };

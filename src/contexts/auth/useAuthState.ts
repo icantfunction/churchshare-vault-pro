@@ -23,7 +23,14 @@ export const useAuthState = () => {
       
       try {
         setProfileError(null);
-        const userProfile = await fetchUserProfile(session.user.id);
+        
+        // Add timeout to profile fetching to prevent infinite loading
+        const profilePromise = fetchUserProfile(session.user.id);
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Profile fetch timeout')), 10000)
+        );
+        
+        const userProfile = await Promise.race([profilePromise, timeoutPromise]) as UserProfile;
         setProfile(userProfile);
         console.log('[DEBUG-119] AuthProvider: Profile loaded successfully:', !!userProfile);
       } catch (error) {
@@ -32,13 +39,15 @@ export const useAuthState = () => {
         const errorMessage = error instanceof Error ? error.message : 'Profile fetch failed';
         setProfileError(errorMessage);
         
-        // Don't block user access for profile issues
+        // Continue without profile - don't block user access
         console.log('[DEBUG-121] AuthProvider: Continuing without profile due to error');
       } finally {
+        // Always set loading to false, regardless of profile success/failure
+        console.log('[DEBUG-122] AuthProvider: Setting loading to false');
         setLoading(false);
       }
     } else {
-      console.log('[DEBUG-122] AuthProvider: No user session, clearing profile');
+      console.log('[DEBUG-123] AuthProvider: No user session, clearing profile');
       setProfile(null);
       setProfileError(null);
       setLoading(false);
