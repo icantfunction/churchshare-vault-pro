@@ -5,14 +5,23 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Download, Calendar, Filter, Image, FileText, Video } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useDemoContext } from "@/contexts/DemoContext";
 
 const MyFiles = () => {
-  const { isDemoMode, demoFiles, demoMinistries, searchDemoFiles, getTotalFileCount } = useDemoContext();
+  const { demoFiles, demoMinistries, searchDemoFiles, getTotalFileCount, setDemoMode } = useDemoContext();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterMinistry, setFilterMinistry] = useState("all");
+
+  // Auto-enable demo mode if we have demo files
+  useEffect(() => {
+    if (demoFiles.length > 0) {
+      setDemoMode(true);
+    }
+  }, [demoFiles.length, setDemoMode]);
+
+  const isDemoMode = demoFiles.length > 0;
 
   // Sample files for non-demo mode - now with ministry_id for consistency
   const sampleFiles = [

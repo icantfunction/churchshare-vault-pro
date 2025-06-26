@@ -58,7 +58,7 @@ const DemoFiles = () => {
               <Link to="/demo/files" className="text-primary font-medium border-b-2 border-primary pb-1">
                 Dashboard
               </Link>
-              <Link to="/demo/files" className="text-gray-700 hover:text-primary transition-colors font-medium">
+              <Link to="/my-files" className="text-gray-700 hover:text-primary transition-colors font-medium">
                 My Files
               </Link>
             </nav>
@@ -191,7 +191,7 @@ const DemoFiles = () => {
             
             return (
               <Card key={ministry.id} className="bg-white shadow-lg border-0 rounded-xl hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1 group overflow-hidden">
-                <Link to="/demo/files" className="block">
+                <Link to="/my-files" className="block">
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between mb-4">
                       <div className={`w-10 h-10 ${colors.bg} rounded-md flex items-center justify-center shadow-lg`}>
@@ -226,7 +226,7 @@ const DemoFiles = () => {
           <div className="bg-white rounded-xl shadow-lg p-6 border-0">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Button asChild variant="outline" className="h-14 rounded-xl border-2 hover:border-primary/40 hover:bg-primary/5">
-                <Link to="/demo/files">
+                <Link to="/my-files">
                   <FileText className="h-5 w-5 mr-2" />
                   View All My Files
                 </Link>
@@ -238,7 +238,7 @@ const DemoFiles = () => {
                 </Link>
               </Button>
               <Button asChild variant="outline" className="h-14 rounded-xl border-2 hover:border-green-400 hover:bg-green-50">
-                <Link to="/demo/files">
+                <Link to="/my-files">
                   <Users className="h-5 w-5 mr-2" />
                   Manage Users (Demo)
                 </Link>

@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +8,7 @@ import { Upload as UploadIcon, X, FileText, Image, Video, ArrowLeft } from "luci
 import { useState, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useDemoContext } from "@/contexts/DemoContext";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const DemoUpload = () => {
   const [files, setFiles] = useState<File[]>([]);
@@ -19,6 +18,7 @@ const DemoUpload = () => {
   const [notes, setNotes] = useState("");
   const { addDemoFile, getTotalFileCount } = useDemoContext();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // Get total file count (sample + user uploaded files)
   const currentFileCount = getTotalFileCount();
@@ -104,11 +104,16 @@ const DemoUpload = () => {
 
       toast({
         title: "Demo Upload Complete!",
-        description: `Successfully added ${files.length} files to demo`,
+        description: `Successfully added ${files.length} files to demo. Redirecting to view files...`,
       });
 
       setFiles([]);
       setUploading(false);
+      
+      // Redirect to My Files page after successful upload
+      setTimeout(() => {
+        navigate('/my-files');
+      }, 1500);
     } catch (error) {
       console.error('[DEBUG] Demo upload error:', error);
       toast({
@@ -146,9 +151,9 @@ const DemoUpload = () => {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
               <Button asChild variant="ghost" size="sm">
-                <Link to="/">
+                <Link to="/demo/files">
                   <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Home
+                  Back to Dashboard
                 </Link>
               </Button>
               <h1 className="text-2xl font-bold text-primary">ChurchShare Pro - Demo</h1>
