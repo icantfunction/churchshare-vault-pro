@@ -45,7 +45,7 @@ export const useAuthRedirect = () => {
     }
   }, [user?.id]);
 
-  // Handle redirect logic
+  // Handle redirect logic - key fix: don't wait for profile, just need valid user session
   useEffect(() => {
     console.log('[DEBUG-306] useAuthRedirect: Main redirect effect triggered');
     
@@ -75,9 +75,9 @@ export const useAuthRedirect = () => {
         });
       } else if (profileError) {
         toast({
-          title: "Signed in with limited profile",
-          description: "Some profile information couldn't be loaded. You can still use the app.",
-          variant: "destructive",
+          title: "Signed in successfully",
+          description: "Your profile is still loading, but you can use the app.",
+          variant: "default",
         });
       } else {
         toast({
@@ -87,18 +87,9 @@ export const useAuthRedirect = () => {
       }
     }
 
-    // Navigate to dashboard
-    const timeoutId = setTimeout(() => {
-      console.log('[DEBUG-310] useAuthRedirect: Executing navigation');
-      if (hasRedirectedRef.current) {
-        console.log('[DEBUG-311] useAuthRedirect: Navigating to dashboard');
-        navigate('/dashboard', { replace: true });
-      }
-    }, 100);
-
-    return () => {
-      clearTimeout(timeoutId);
-    };
+    // Navigate to dashboard immediately - don't wait for profile
+    console.log('[DEBUG-310] useAuthRedirect: Executing navigation');
+    navigate('/dashboard', { replace: true });
   }, [user, authLoading, location.pathname, navigate, toast, profile, profileError]);
 
   const returnValue = {

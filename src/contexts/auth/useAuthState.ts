@@ -21,21 +21,33 @@ export const useAuthState = () => {
     if (session?.user) {
       console.log('[DEBUG-117] AuthProvider: User authenticated, fetching profile...');
       
+      // Set a timeout to ensure we don't block indefinitely
+      const profileTimeout = setTimeout(() => {
+        console.log('[DEBUG-118] AuthProvider: Profile fetch timeout, proceeding without profile');
+        setLoading(false);
+        setProfileError('Profile loading timed out, but you can still use the app');
+      }, 3000); // 3 second timeout
+
       try {
         setProfileError(null);
         const userProfile = await fetchUserProfile(session.user.id);
+        clearTimeout(profileTimeout);
         setProfile(userProfile);
-        console.log('[DEBUG-118] AuthProvider: Setting profile state:', !!userProfile);
+        console.log('[DEBUG-119] AuthProvider: Profile loaded successfully:', !!userProfile);
       } catch (error) {
-        console.error('[DEBUG-119] AuthProvider: Profile fetch failed:', error);
+        clearTimeout(profileTimeout);
+        console.error('[DEBUG-120] AuthProvider: Profile fetch failed:', error);
         setProfile(null);
-        setProfileError(error instanceof Error ? error.message : 'Profile fetch failed');
+        const errorMessage = error instanceof Error ? error.message : 'Profile fetch failed';
+        setProfileError(errorMessage);
+        
+        // Don't block user access for profile issues
+        console.log('[DEBUG-121] AuthProvider: Continuing without profile due to error');
       } finally {
-        console.log('[DEBUG-120] AuthProvider: Setting loading to false after profile attempt');
         setLoading(false);
       }
     } else {
-      console.log('[DEBUG-121] AuthProvider: No user session, clearing profile');
+      console.log('[DEBUG-122] AuthProvider: No user session, clearing profile');
       setProfile(null);
       setProfileError(null);
       setLoading(false);

@@ -21,7 +21,7 @@ export const fetchUserProfile = async (userId: string): Promise<UserProfile | nu
         console.log('[DEBUG-107] AuthProvider: No user record found, might be new user - waiting for trigger');
         
         // For new users, wait a moment for the trigger to create the profile
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
         // Try one more time
         const { data: retryData, error: retryError } = await supabase
@@ -31,23 +31,23 @@ export const fetchUserProfile = async (userId: string): Promise<UserProfile | nu
           .single();
           
         if (retryError || !retryData) {
-          console.log('[DEBUG-108] AuthProvider: Still no profile after retry, user can continue without profile');
-          throw new Error('Profile loading delayed. You can still use the application.');
+          console.log('[DEBUG-108] AuthProvider: Still no profile after retry');
+          throw new Error('Profile is being created. Please refresh the page in a moment.');
         }
         
         console.log('[DEBUG-109] AuthProvider: Profile found on retry:', retryData);
         return mapUserProfile(retryData);
       } else if (error.code === '42501') {
         console.log('[DEBUG-110] AuthProvider: RLS policy blocking access');
-        throw new Error('Access denied. Please check permissions.');
+        throw new Error('Access permissions are being set up. Please try again.');
       } else {
-        throw new Error(error.message);
+        throw new Error(`Profile access error: ${error.message}`);
       }
     }
 
     if (!data) {
       console.log('[DEBUG-111] AuthProvider: No data returned from query');
-      throw new Error('User profile not found');
+      throw new Error('Profile not found');
     }
 
     console.log('[DEBUG-112] AuthProvider: Profile fetched successfully:', data);
