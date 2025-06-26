@@ -18,7 +18,19 @@ export const useInactivityTimer = (options: UseInactivityTimerOptions = {}) => {
     onTimeout
   } = options;
 
-  const { signOut, user } = useAuth();
+  // Add defensive auth context usage
+  let signOut = () => Promise.resolve();
+  let user = null;
+  
+  try {
+    const authContext = useAuth();
+    signOut = authContext.signOut;
+    user = authContext.user;
+  } catch (error) {
+    console.log('[DEBUG-INACTIVITY] Auth context not available, skipping inactivity tracking');
+    return { resetTimer: () => {}, clearTimers: () => {} };
+  }
+
   const { toast } = useToast();
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
