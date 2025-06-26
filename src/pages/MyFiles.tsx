@@ -1,4 +1,3 @@
-
 import Header from "@/components/Header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +9,7 @@ import { useState } from "react";
 import { useDemoContext } from "@/contexts/DemoContext";
 
 const MyFiles = () => {
-  const { isDemoMode, demoFiles, demoMinistries, searchDemoFiles, getUserUploadedFileCount } = useDemoContext();
+  const { isDemoMode, demoFiles, demoMinistries, searchDemoFiles, getTotalFileCount } = useDemoContext();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterMinistry, setFilterMinistry] = useState("all");
@@ -137,7 +136,7 @@ const MyFiles = () => {
     }
   };
 
-  const userUploadedCount = isDemoMode ? getUserUploadedFileCount() : 0;
+  const totalFileCount = isDemoMode ? getTotalFileCount() : 0;
 
   return (
     <div className="min-h-screen bg-background font-poppins">
@@ -148,7 +147,7 @@ const MyFiles = () => {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">My Files</h1>
           <p className="text-gray-600">
             All files you have access to across ministries
-            {isDemoMode && ` (Demo Mode - ${userUploadedCount}/2 additional files uploaded)`}
+            {isDemoMode && ` (Demo Mode - ${totalFileCount}/6 total files)`}
           </p>
         </div>
 
@@ -203,7 +202,7 @@ const MyFiles = () => {
         <div className="mb-6">
           <p className="text-gray-600">
             Showing {filteredFiles.length} of {transformedDemoFiles.length} files
-            {isDemoMode && ` (${userUploadedCount} user-uploaded)`}
+            {isDemoMode && ` (${totalFileCount}/6 total files)`}
           </p>
         </div>
 
