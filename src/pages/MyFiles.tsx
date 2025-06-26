@@ -10,7 +10,7 @@ import { useState } from "react";
 import { useDemoContext } from "@/contexts/DemoContext";
 
 const MyFiles = () => {
-  const { isDemoMode, demoFiles, demoMinistries, searchDemoFiles } = useDemoContext();
+  const { isDemoMode, demoFiles, demoMinistries, searchDemoFiles, getUserUploadedFileCount } = useDemoContext();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterMinistry, setFilterMinistry] = useState("all");
@@ -60,17 +60,22 @@ const MyFiles = () => {
   ];
 
   // Transform demo files to match expected format
-  const transformedDemoFiles = isDemoMode ? demoFiles.map(file => ({
-    id: file.id,
-    name: file.file_name,
-    type: file.file_type.startsWith('image/') ? 'image' : 
-          file.file_type.startsWith('video/') ? 'video' : 'document',
-    ministry: demoMinistries.find(m => m.id === file.ministry_id)?.name || file.ministry_id,
-    eventDate: file.event_date,
-    uploadedBy: file.uploaded_by,
-    size: formatFileSize(file.file_size),
-    thumbnail: file.thumbnail || file.file_url,
-  })) : sampleFiles;
+  const transformedDemoFiles = isDemoMode ? demoFiles.map(file => {
+    const ministry = demoMinistries.find(m => m.id === file.ministry_id);
+    console.log('[DEBUG] Transforming file:', file.file_name, 'ministry_id:', file.ministry_id, 'found ministry:', ministry?.name);
+    return {
+      id: file.id,
+      name: file.file_name,
+      type: file.file_type.startsWith('image/') ? 'image' : 
+            file.file_type.startsWith('video/') ? 'video' : 'document',
+      ministry: ministry?.name || `Unknown (${file.ministry_id})`,
+      eventDate: file.event_date,
+      uploadedBy: file.uploaded_by,
+      size: formatFileSize(file.file_size),
+      thumbnail: file.thumbnail || file.file_url,
+      ministry_id: file.ministry_id, // Keep original ministry_id for filtering
+    };
+  }) : sampleFiles;
 
   function formatFileSize(bytes: number) {
     if (bytes === 0) return '0 Bytes';
@@ -88,8 +93,20 @@ const MyFiles = () => {
     
     const matchesType = filterType === "all" || file.type === filterType;
     
+    // Fix ministry filtering to use ministry_id if available, otherwise fall back to name matching
     const matchesMinistry = filterMinistry === "all" || 
-      file.ministry.toLowerCase().replace(/[\s']/g, '') === filterMinistry;
+      (isDemoMode && file.ministry_id === filterMinistry) ||
+      (!isDemoMode && file.ministry.toLowerCase().replace(/[\s']/g, '') === filterMinistry);
+    
+    console.log('[DEBUG] File filter check:', {
+      fileName: file.name,
+      ministry: file.ministry,
+      ministry_id: file.ministry_id || 'N/A',
+      filterMinistry,
+      matchesMinistry,
+      matchesSearch,
+      matchesType
+    });
     
     return matchesSearch && matchesType && matchesMinistry;
   });
@@ -118,6 +135,8 @@ const MyFiles = () => {
     }
   };
 
+  const userUploadedCount = isDemoMode ? getUserUploadedFileCount() : 0;
+
   return (
     <div className="min-h-screen bg-background font-poppins">
       <Header />
@@ -127,7 +146,7 @@ const MyFiles = () => {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">My Files</h1>
           <p className="text-gray-600">
             All files you have access to across ministries
-            {isDemoMode && " (Demo Mode - showing sample and uploaded files)"}
+            {isDemoMode && ` (Demo Mode - ${userUploadedCount}/2 additional files uploaded)`}
           </p>
         </div>
 
@@ -163,10 +182,10 @@ const MyFiles = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Ministries</SelectItem>
-                  <SelectItem value="youthministry">Youth Ministry</SelectItem>
-                  <SelectItem value="worshipteam">Worship Team</SelectItem>
-                  <SelectItem value="childrensministry">Children's Ministry</SelectItem>
-                  <SelectItem value="outreachevents">Outreach Events</SelectItem>
+                  <SelectItem value="youth">Youth Ministry</SelectItem>
+                  <SelectItem value="worship">Worship Team</SelectItem>
+                  <SelectItem value="children">Children's Ministry</SelectItem>
+                  <SelectItem value="outreach">Outreach Events</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -182,6 +201,7 @@ const MyFiles = () => {
         <div className="mb-6">
           <p className="text-gray-600">
             Showing {filteredFiles.length} of {transformedDemoFiles.length} files
+            {isDemoMode && ` (${demoFiles.filter(f => !f.id.startsWith('sample-file-')).length} user-uploaded)`}
           </p>
         </div>
 

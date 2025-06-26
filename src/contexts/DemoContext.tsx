@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 interface DemoFile {
@@ -43,6 +44,7 @@ interface DemoContextType {
   clearDemoFiles: () => void;
   getDemoFilesByMinistry: (ministryId: string) => DemoFile[];
   searchDemoFiles: (query: string) => DemoFile[];
+  getUserUploadedFileCount: () => number;
 }
 
 const DemoContext = createContext<DemoContextType | undefined>(undefined);
@@ -55,7 +57,7 @@ export const useDemoContext = () => {
   return context;
 };
 
-// Sample demo data
+// Sample demo data with consistent ministry IDs
 const sampleMinistries: DemoMinistry[] = [
   {
     id: 'youth',
@@ -117,9 +119,10 @@ const sampleUsers: DemoUser[] = [
   }
 ];
 
+// Sample files with consistent ministry IDs
 const sampleFiles: DemoFile[] = [
   {
-    id: 'demo-file-1',
+    id: 'sample-file-1',
     file_name: 'Youth_Camp_2024_Group_Photo.jpg',
     file_type: 'image/jpeg',
     file_size: 4200000,
@@ -132,7 +135,7 @@ const sampleFiles: DemoFile[] = [
     thumbnail: 'https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?w=300&h=200&fit=crop'
   },
   {
-    id: 'demo-file-2',
+    id: 'sample-file-2',
     file_name: 'Sunday_Worship_Recording.mp4',
     file_type: 'video/mp4',
     file_size: 125000000,
@@ -145,7 +148,7 @@ const sampleFiles: DemoFile[] = [
     thumbnail: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=300&h=200&fit=crop'
   },
   {
-    id: 'demo-file-3',
+    id: 'sample-file-3',
     file_name: 'Childrens_Easter_Program.pdf',
     file_type: 'application/pdf',
     file_size: 2100000,
@@ -158,7 +161,7 @@ const sampleFiles: DemoFile[] = [
     thumbnail: 'https://images.unsplash.com/photo-1487058792275-0ad4aaf24ca7?w=300&h=200&fit=crop'
   },
   {
-    id: 'demo-file-4',
+    id: 'sample-file-4',
     file_name: 'Community_Outreach_Photos.zip',
     file_type: 'application/zip',
     file_size: 45000000,
@@ -179,12 +182,22 @@ export const DemoProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [demoUsers] = useState<DemoUser[]>(sampleUsers);
   const [currentDemoUser] = useState<DemoUser>(sampleUsers[0]); // Demo user is admin
 
+  // Helper function to get user-uploaded files (not sample files)
+  const getUserUploadedFiles = () => {
+    return demoFiles.filter(file => !file.id.startsWith('sample-file-'));
+  };
+
+  const getUserUploadedFileCount = () => {
+    return getUserUploadedFiles().length;
+  };
+
   // Load demo files from localStorage on mount
   useEffect(() => {
     const savedFiles = localStorage.getItem('churchshare-demo-files');
     if (savedFiles) {
       try {
         const files = JSON.parse(savedFiles);
+        console.log('[DEBUG] Loaded user files from storage:', files.length);
         setDemoFiles(prev => [...sampleFiles, ...files]);
       } catch (error) {
         console.error('Error loading demo files:', error);
@@ -194,17 +207,21 @@ export const DemoProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Save only user-uploaded demo files to localStorage
   useEffect(() => {
-    const userUploadedFiles = demoFiles.filter(file => !sampleFiles.find(sf => sf.id === file.id));
+    const userUploadedFiles = getUserUploadedFiles();
     if (userUploadedFiles.length > 0) {
+      console.log('[DEBUG] Saving user files to storage:', userUploadedFiles.length);
       localStorage.setItem('churchshare-demo-files', JSON.stringify(userUploadedFiles));
     }
   }, [demoFiles]);
 
   const addDemoFile = async (file: File, ministry: string, eventDate: string, notes: string) => {
-    const userUploadedFiles = demoFiles.filter(file => !sampleFiles.find(sf => sf.id === file.id));
+    const userUploadedFileCount = getUserUploadedFileCount();
+    
+    console.log('[DEBUG] Current user file count:', userUploadedFileCount);
+    console.log('[DEBUG] Attempting to upload to ministry:', ministry);
     
     // Limit to 2 user-uploaded files in demo mode
-    if (userUploadedFiles.length >= 2) {
+    if (userUploadedFileCount >= 2) {
       throw new Error('Demo mode is limited to 2 additional files. Please sign up for full access.');
     }
 
@@ -212,7 +229,7 @@ export const DemoProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const fileUrl = URL.createObjectURL(file);
 
     const demoFile: DemoFile = {
-      id: `demo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `user-uploaded-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       file_name: file.name,
       file_type: file.type,
       file_size: file.size,
@@ -225,6 +242,7 @@ export const DemoProvider: React.FC<{ children: React.ReactNode }> = ({ children
       thumbnail: file.type.startsWith('image/') ? fileUrl : undefined
     };
 
+    console.log('[DEBUG] Adding demo file:', demoFile);
     setDemoFiles(prev => [...prev, demoFile]);
   };
 
@@ -237,7 +255,7 @@ export const DemoProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const clearDemoFiles = () => {
     // Revoke blob URLs to free memory (only for user-uploaded files)
-    const userUploadedFiles = demoFiles.filter(file => !sampleFiles.find(sf => sf.id === file.id));
+    const userUploadedFiles = getUserUploadedFiles();
     userUploadedFiles.forEach(file => {
       if (file.file_url.startsWith('blob:')) {
         URL.revokeObjectURL(file.file_url);
@@ -248,7 +266,10 @@ export const DemoProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getDemoFilesByMinistry = (ministryId: string) => {
-    return demoFiles.filter(file => file.ministry_id === ministryId);
+    console.log('[DEBUG] Getting files for ministry:', ministryId);
+    const filtered = demoFiles.filter(file => file.ministry_id === ministryId);
+    console.log('[DEBUG] Found files:', filtered.length);
+    return filtered;
   };
 
   const searchDemoFiles = (query: string) => {
@@ -272,7 +293,8 @@ export const DemoProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setDemoMode,
       clearDemoFiles,
       getDemoFilesByMinistry,
-      searchDemoFiles
+      searchDemoFiles,
+      getUserUploadedFileCount
     }}>
       {children}
     </DemoContext.Provider>
