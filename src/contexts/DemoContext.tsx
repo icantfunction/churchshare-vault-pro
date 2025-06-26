@@ -44,7 +44,7 @@ interface DemoContextType {
   clearDemoFiles: () => void;
   getDemoFilesByMinistry: (ministryId: string) => DemoFile[];
   searchDemoFiles: (query: string) => DemoFile[];
-  getUserUploadedFileCount: () => number;
+  getTotalFileCount: () => number;
 }
 
 const DemoContext = createContext<DemoContextType | undefined>(undefined);
@@ -57,7 +57,7 @@ export const useDemoContext = () => {
   return context;
 };
 
-// Sample demo data with consistent ministry IDs
+// Sample demo data with consistent ministry IDs - these are "pre-uploaded" demo files
 const sampleMinistries: DemoMinistry[] = [
   {
     id: 'youth',
@@ -119,7 +119,7 @@ const sampleUsers: DemoUser[] = [
   }
 ];
 
-// Sample files with consistent ministry IDs
+// Pre-uploaded sample files - these count toward the 6 file limit
 const sampleFiles: DemoFile[] = [
   {
     id: 'sample-file-1',
@@ -182,16 +182,19 @@ export const DemoProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [demoUsers] = useState<DemoUser[]>(sampleUsers);
   const [currentDemoUser] = useState<DemoUser>(sampleUsers[0]); // Demo user is admin
 
-  // Helper function to get user-uploaded files (not sample files)
-  const getUserUploadedFiles = () => {
-    return demoFiles.filter(file => !file.id.startsWith('sample-file-'));
+  // Helper function to get total file count (sample + user uploaded)
+  const getTotalFileCount = () => {
+    return demoFiles.length;
   };
 
-  const getUserUploadedFileCount = () => {
-    return getUserUploadedFiles().length;
-  };
+  // Clear any stale localStorage data on mount to ensure clean state
+  useEffect(() => {
+    // Clear any existing demo files from localStorage to start fresh
+    localStorage.removeItem('churchshare-demo-files');
+    console.log('[DEBUG] Cleared stale localStorage data');
+  }, []);
 
-  // Load demo files from localStorage on mount
+  // Load demo files from localStorage on mount (after clearing stale data)
   useEffect(() => {
     const savedFiles = localStorage.getItem('churchshare-demo-files');
     if (savedFiles) {
@@ -207,7 +210,7 @@ export const DemoProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Save only user-uploaded demo files to localStorage
   useEffect(() => {
-    const userUploadedFiles = getUserUploadedFiles();
+    const userUploadedFiles = demoFiles.filter(file => !file.id.startsWith('sample-file-'));
     if (userUploadedFiles.length > 0) {
       console.log('[DEBUG] Saving user files to storage:', userUploadedFiles.length);
       localStorage.setItem('churchshare-demo-files', JSON.stringify(userUploadedFiles));
@@ -215,14 +218,14 @@ export const DemoProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [demoFiles]);
 
   const addDemoFile = async (file: File, ministry: string, eventDate: string, notes: string) => {
-    const userUploadedFileCount = getUserUploadedFileCount();
+    const currentTotalFiles = getTotalFileCount();
     
-    console.log('[DEBUG] Current user file count:', userUploadedFileCount);
+    console.log('[DEBUG] Current total file count:', currentTotalFiles);
     console.log('[DEBUG] Attempting to upload to ministry:', ministry);
     
-    // Limit to 2 user-uploaded files in demo mode
-    if (userUploadedFileCount >= 2) {
-      throw new Error('Demo mode is limited to 2 additional files. Please sign up for full access.');
+    // Limit to 6 total files in demo mode
+    if (currentTotalFiles >= 6) {
+      throw new Error('Demo mode is limited to 6 total files. Please sign up for full access.');
     }
 
     // Create blob URL for preview
@@ -255,7 +258,7 @@ export const DemoProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const clearDemoFiles = () => {
     // Revoke blob URLs to free memory (only for user-uploaded files)
-    const userUploadedFiles = getUserUploadedFiles();
+    const userUploadedFiles = demoFiles.filter(file => !file.id.startsWith('sample-file-'));
     userUploadedFiles.forEach(file => {
       if (file.file_url.startsWith('blob:')) {
         URL.revokeObjectURL(file.file_url);
@@ -294,7 +297,7 @@ export const DemoProvider: React.FC<{ children: React.ReactNode }> = ({ children
       clearDemoFiles,
       getDemoFilesByMinistry,
       searchDemoFiles,
-      getUserUploadedFileCount
+      getTotalFileCount
     }}>
       {children}
     </DemoContext.Provider>

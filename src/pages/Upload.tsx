@@ -1,3 +1,4 @@
+
 import Header from "@/components/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,25 +21,25 @@ const Upload = () => {
   const [eventDate, setEventDate] = useState("");
   const [notes, setNotes] = useState("");
   const { toast } = useToast();
-  const { isDemoMode, addDemoFile, getUserUploadedFileCount } = useDemoContext();
+  const { isDemoMode, addDemoFile, getTotalFileCount } = useDemoContext();
 
-  const userUploadedCount = isDemoMode ? getUserUploadedFileCount() : 0;
+  const currentFileCount = isDemoMode ? getTotalFileCount() : 0;
 
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     const droppedFiles = Array.from(e.dataTransfer.files);
     
     if (isDemoMode) {
-      if (userUploadedCount + files.length + droppedFiles.length > 2) {
+      if (currentFileCount + files.length + droppedFiles.length > 6) {
         console.log('[DEBUG] Drop rejected - would exceed limit:', {
-          current: userUploadedCount,
+          current: currentFileCount,
           pending: files.length,
           dropped: droppedFiles.length,
-          total: userUploadedCount + files.length + droppedFiles.length
+          total: currentFileCount + files.length + droppedFiles.length
         });
         toast({
           title: "Demo Limit Reached",
-          description: "Demo mode is limited to 2 additional files. Sign up for unlimited uploads!",
+          description: "Demo mode is limited to 6 total files. Sign up for unlimited uploads!",
           variant: "destructive"
         });
         return;
@@ -47,23 +48,23 @@ const Upload = () => {
     
     console.log('[DEBUG] Files dropped successfully:', droppedFiles.length);
     setFiles(prev => [...prev, ...droppedFiles]);
-  }, [files.length, userUploadedCount, isDemoMode, toast]);
+  }, [files.length, currentFileCount, isDemoMode, toast]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files);
       
       if (isDemoMode) {
-        if (userUploadedCount + files.length + selectedFiles.length > 2) {
+        if (currentFileCount + files.length + selectedFiles.length > 6) {
           console.log('[DEBUG] File selection rejected - would exceed limit:', {
-            current: userUploadedCount,
+            current: currentFileCount,
             pending: files.length,
             selected: selectedFiles.length,
-            total: userUploadedCount + files.length + selectedFiles.length
+            total: currentFileCount + files.length + selectedFiles.length
           });
           toast({
             title: "Demo Limit Reached", 
-            description: "Demo mode is limited to 2 additional files. Sign up for unlimited uploads!",
+            description: "Demo mode is limited to 6 total files. Sign up for unlimited uploads!",
             variant: "destructive"
           });
           return;
@@ -93,7 +94,7 @@ const Upload = () => {
       fileCount: files.length,
       ministry,
       isDemoMode,
-      userUploadedCount
+      currentFileCount
     });
 
     setUploading(true);
@@ -178,7 +179,7 @@ const Upload = () => {
                 <h1 className="text-2xl font-bold text-primary">ChurchShare Pro - Upload</h1>
               </div>
               <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-600">Demo: {userUploadedCount}/2 additional files</span>
+                <span className="text-sm text-gray-600">Demo: {currentFileCount + files.length}/6 files</span>
                 <Button asChild>
                   <Link to="/auth">Sign Up for Full Access</Link>
                 </Button>
@@ -195,7 +196,7 @@ const Upload = () => {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Upload Files</h1>
           <p className="text-gray-600">
             Share photos, videos, and documents with your ministry
-            {isDemoMode && " (Demo Mode - 2 additional file limit)"}
+            {isDemoMode && " (Demo Mode - 6 total file limit)"}
           </p>
         </div>
 
@@ -261,7 +262,7 @@ const Upload = () => {
                 <h3 className="text-xl font-semibold mb-2">Drop files here</h3>
                 <p className="text-gray-600 mb-4">
                   Or click to browse and select files
-                  {isDemoMode && ` (${userUploadedCount + files.length}/2 additional)`}
+                  {isDemoMode && ` (${currentFileCount + files.length}/6 files)`}
                 </p>
                 <input
                   type="file"
@@ -278,7 +279,7 @@ const Upload = () => {
                 </Button>
                 <p className="text-sm text-gray-500 mt-4">
                   Supports images, videos, documents up to 500MB each
-                  {isDemoMode && " (Demo: 2 additional file limit)"}
+                  {isDemoMode && " (Demo: 6 total file limit)"}
                 </p>
               </div>
             </CardContent>
