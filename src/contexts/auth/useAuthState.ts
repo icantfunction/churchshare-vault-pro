@@ -21,21 +21,12 @@ export const useAuthState = () => {
     if (session?.user) {
       console.log('[DEBUG-117] AuthProvider: User authenticated, fetching profile...');
       
-      // Set a timeout to ensure we don't block indefinitely
-      const profileTimeout = setTimeout(() => {
-        console.log('[DEBUG-118] AuthProvider: Profile fetch timeout, proceeding without profile');
-        setLoading(false);
-        setProfileError('Profile loading timed out, but you can still use the app');
-      }, 3000); // 3 second timeout
-
       try {
         setProfileError(null);
         const userProfile = await fetchUserProfile(session.user.id);
-        clearTimeout(profileTimeout);
         setProfile(userProfile);
         console.log('[DEBUG-119] AuthProvider: Profile loaded successfully:', !!userProfile);
       } catch (error) {
-        clearTimeout(profileTimeout);
         console.error('[DEBUG-120] AuthProvider: Profile fetch failed:', error);
         setProfile(null);
         const errorMessage = error instanceof Error ? error.message : 'Profile fetch failed';
