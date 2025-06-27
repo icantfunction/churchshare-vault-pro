@@ -4,15 +4,29 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Download, Calendar, Filter, Image, FileText, Video } from "lucide-react";
+import { 
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator
+} from "@/components/ui/breadcrumb";
+import { Search, Download, Calendar, Filter, Image, FileText, Video, Home } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useDemoContext } from "@/contexts/DemoContext";
+import { useSearchParams, Link } from "react-router-dom";
 
 const MyFiles = () => {
   const { demoFiles, demoMinistries, searchDemoFiles, getTotalFileCount, setDemoMode } = useDemoContext();
+  const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterMinistry, setFilterMinistry] = useState("all");
+
+  // Get ministry from URL parameter
+  const ministryFromUrl = searchParams.get('ministry');
+  const selectedMinistry = ministryFromUrl ? demoMinistries.find(m => m.id === ministryFromUrl) : null;
 
   // Auto-enable demo mode if we have demo files
   useEffect(() => {
@@ -20,6 +34,13 @@ const MyFiles = () => {
       setDemoMode(true);
     }
   }, [demoFiles.length, setDemoMode]);
+
+  // Set ministry filter from URL parameter
+  useEffect(() => {
+    if (ministryFromUrl) {
+      setFilterMinistry(ministryFromUrl);
+    }
+  }, [ministryFromUrl]);
 
   const isDemoMode = demoFiles.length > 0;
 
@@ -152,12 +173,49 @@ const MyFiles = () => {
       <Header />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Breadcrumb Navigation */}
+        {selectedMinistry && (
+          <div className="mb-6">
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink asChild>
+                    <Link to="/demo/files">
+                      <Home className="h-4 w-4" />
+                    </Link>
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbLink asChild>
+                    <Link to="/my-files">All Files</Link>
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage>{selectedMinistry.name}</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
+          </div>
+        )}
+
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">My Files</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            {selectedMinistry ? `${selectedMinistry.name} Files` : 'My Files'}
+          </h1>
           <p className="text-gray-600">
-            All files you have access to across ministries
+            {selectedMinistry 
+              ? `Files from ${selectedMinistry.name}`
+              : "All files you have access to across ministries"
+            }
             {isDemoMode && ` (Demo Mode - ${totalFileCount}/6 total files)`}
           </p>
+          {selectedMinistry && (
+            <Button asChild variant="outline" className="mt-2">
+              <Link to="/my-files">View All Files</Link>
+            </Button>
+          )}
         </div>
 
         {/* Filters */}
@@ -285,7 +343,10 @@ const MyFiles = () => {
               <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
               <h3 className="text-xl font-semibold mb-2">No Files Found</h3>
               <p className="text-gray-600 mb-6">
-                No files match your current search and filter criteria.
+                {selectedMinistry 
+                  ? `No files found in ${selectedMinistry.name} matching your search criteria.`
+                  : "No files match your current search and filter criteria."
+                }
               </p>
               <Button 
                 onClick={() => {

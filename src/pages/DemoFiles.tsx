@@ -191,7 +191,7 @@ const DemoFiles = () => {
             
             return (
               <Card key={ministry.id} className="bg-white shadow-lg border-0 rounded-xl hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1 group overflow-hidden">
-                <Link to="/my-files" className="block">
+                <Link to={`/my-files?ministry=${ministry.id}`} className="block">
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between mb-4">
                       <div className={`w-10 h-10 ${colors.bg} rounded-md flex items-center justify-center shadow-lg`}>
