@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Shield, Upload, Users } from "lucide-react";
+import { Shield, Upload, Users, Database } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDemoContext } from "@/contexts/DemoContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -93,6 +93,9 @@ const Index = () => {
             </div>
             <div className="flex items-center space-x-4">
               <Button asChild variant="ghost" className="text-gray-700 hover:text-primary">
+                <Link to="/pricing">Pricing</Link>
+              </Button>
+              <Button asChild variant="ghost" className="text-gray-700 hover:text-primary">
                 <Link to="/auth">Sign In</Link>
               </Button>
               <Button asChild className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90">
@@ -136,17 +139,17 @@ const Index = () => {
               Everything your church needs to manage and share files securely
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
               <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white/80 backdrop-blur-sm">
                 <CardHeader className="pb-4">
                   <div className="w-16 h-16 bg-gradient-to-br from-primary/10 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <Shield className="h-8 w-8 text-primary" />
                   </div>
-                  <CardTitle className="text-xl">Secure & Private</CardTitle>
+                  <CardTitle className="text-xl">No-compression originals</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <CardDescription className="text-gray-600 leading-relaxed">
-                    Role-based permissions ensure only authorized ministry members can access files.
+                    Upload photos and files without compression. Original quality preserved every time.
                   </CardDescription>
                 </CardContent>
               </Card>
@@ -156,11 +159,11 @@ const Index = () => {
                   <div className="w-16 h-16 bg-gradient-to-br from-secondary/10 to-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <Upload className="h-8 w-8 text-secondary" />
                   </div>
-                  <CardTitle className="text-xl">High-Quality Uploads</CardTitle>
+                  <CardTitle className="text-xl">4K / 1080p / 720p preview picker</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <CardDescription className="text-gray-600 leading-relaxed">
-                    Upload photos and files without compression. Original quality preserved.
+                    Choose your preview quality. Stream in 4K or save bandwidth with 720p options.
                   </CardDescription>
                 </CardContent>
               </Card>
@@ -170,11 +173,25 @@ const Index = () => {
                   <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <Users className="h-8 w-8 text-green-600" />
                   </div>
-                  <CardTitle className="text-xl">Ministry Organization</CardTitle>
+                  <CardTitle className="text-xl">Ministry-specific permissions</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <CardDescription className="text-gray-600 leading-relaxed">
-                    Organize files by ministry and events. Easy to find what you need.
+                    Role-based access ensures only authorized ministry members can view files.
+                  </CardDescription>
+                </CardContent>
+              </Card>
+
+              <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white/80 backdrop-blur-sm">
+                <CardHeader className="pb-4">
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <Database className="h-8 w-8 text-blue-600" />
+                  </div>
+                  <CardTitle className="text-xl">Glacier-instant archive</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription className="text-gray-600 leading-relaxed">
+                    10 TB to 50 TB included, instant playback even for 5-year-old sermons.
                   </CardDescription>
                 </CardContent>
               </Card>

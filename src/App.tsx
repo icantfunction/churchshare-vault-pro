@@ -11,6 +11,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import InactivityTracker from "@/components/InactivityTracker";
 
 const Index = lazy(() => import("@/pages/Index"));
+const Pricing = lazy(() => import("@/pages/Pricing"));
 const Auth = lazy(() => import("@/pages/Auth"));
 const Login = lazy(() => import("@/pages/Login"));
 const Signup = lazy(() => import("@/pages/Signup"));
@@ -41,6 +42,7 @@ const App = () => {
                   <Suspense fallback={<div>Loading...</div>}>
                     <Routes>
                       <Route path="/" element={<Index />} />
+                      <Route path="/pricing" element={<Pricing />} />
                       <Route path="/auth" element={<Auth />} />
                       <Route path="/login" element={<Login />} />
                       <Route path="/signup" element={<Signup />} />
