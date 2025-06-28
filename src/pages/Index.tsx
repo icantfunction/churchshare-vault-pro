@@ -144,11 +144,11 @@ const Index = () => {
                   <div className="w-16 h-16 bg-gradient-to-br from-primary/10 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <Shield className="h-8 w-8 text-primary" />
                   </div>
-                  <CardTitle className="text-xl">No-compression originals</CardTitle>
+                  <CardTitle className="text-xl">Secure & Private</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <CardDescription className="text-gray-600 leading-relaxed">
-                    Upload photos and files without compression. Original quality preserved every time.
+                    Role-based permissions ensure only authorized ministry members can access files.
                   </CardDescription>
                 </CardContent>
               </Card>
@@ -158,11 +158,11 @@ const Index = () => {
                   <div className="w-16 h-16 bg-gradient-to-br from-secondary/10 to-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <Upload className="h-8 w-8 text-secondary" />
                   </div>
-                  <CardTitle className="text-xl">4K / 1080p / 720p preview picker</CardTitle>
+                  <CardTitle className="text-xl">High-Quality Uploads</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <CardDescription className="text-gray-600 leading-relaxed">
-                    Choose your preview quality. Stream in 4K or save bandwidth with 720p options.
+                    Upload photos and files without compression. Original quality preserved.
                   </CardDescription>
                 </CardContent>
               </Card>
@@ -172,11 +172,11 @@ const Index = () => {
                   <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <Users className="h-8 w-8 text-green-600" />
                   </div>
-                  <CardTitle className="text-xl">Ministry-specific permissions</CardTitle>
+                  <CardTitle className="text-xl">Ministry Organization</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <CardDescription className="text-gray-600 leading-relaxed">
-                    Role-based access ensures only authorized ministry members can view files.
+                    Organize files by ministry and events. Easy to find what you need.
                   </CardDescription>
                 </CardContent>
               </Card>
