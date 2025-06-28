@@ -27,8 +27,6 @@ const NotFound = lazy(() => import("@/pages/NotFound"));
 const queryClient = new QueryClient();
 
 const App = () => {
-  console.log('[DEBUG-005] App: Component render started');
-  
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>

@@ -1,139 +1,141 @@
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload as UploadIcon, X, FileText, Image, Video, ArrowLeft } from "lucide-react";
-import { useState, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { Upload, X, FileText, Image, Video, Archive } from "lucide-react";
 import { useDemoContext } from "@/contexts/DemoContext";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+
+interface FileWithPreview {
+  file: File;
+  id: string;
+  url?: string;
+}
 
 const DemoUpload = () => {
-  const [files, setFiles] = useState<File[]>([]);
-  const [uploading, setUploading] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<FileWithPreview[]>([]);
   const [ministry, setMinistry] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [notes, setNotes] = useState("");
-  const { addDemoFile, getTotalFileCount } = useDemoContext();
+  const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const { addDemoFile, demoMinistries, getTotalFileCount } = useDemoContext();
 
-  // Get total file count (sample + user uploaded files)
-  const currentFileCount = getTotalFileCount();
-
-  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const droppedFiles = Array.from(e.dataTransfer.files);
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    const currentTotal = getTotalFileCount();
+    const newFilesCount = files.length;
     
-    // Check demo limit - 6 total files maximum
-    if (currentFileCount + files.length + droppedFiles.length > 6) {
+    if (currentTotal + newFilesCount > 6) {
       toast({
-        title: "Demo Limit Reached",
-        description: "Demo mode is limited to 6 total files. Sign up for unlimited uploads!",
-        variant: "destructive"
+        title: "File limit reached",
+        description: "Demo mode is limited to 6 total files. Please sign up for full access.",
+        variant: "destructive",
       });
       return;
     }
-    
-    setFiles(prev => [...prev, ...droppedFiles]);
-  }, [files.length, currentFileCount, toast]);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const selectedFiles = Array.from(e.target.files);
-      
-      // Check demo limit - 6 total files maximum
-      if (currentFileCount + files.length + selectedFiles.length > 6) {
-        toast({
-          title: "Demo Limit Reached",
-          description: "Demo mode is limited to 6 total files. Sign up for unlimited uploads!",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      setFiles(prev => [...prev, ...selectedFiles]);
-    }
+    const newFiles: FileWithPreview[] = files.map(file => ({
+      file,
+      id: Math.random().toString(36).substr(2, 9),
+      url: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined
+    }));
+
+    setSelectedFiles(prev => [...prev, ...newFiles]);
   };
 
-  const removeFile = (index: number) => {
-    const fileToRemove = files[index];
-    
-    // Revoke blob URL if it was created with URL.createObjectURL
-    if (fileToRemove && typeof fileToRemove === 'object' && 'file_url' in fileToRemove) {
-      const fileUrl = (fileToRemove as any).file_url;
-      if (fileUrl && typeof fileUrl === 'string' && fileUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(fileUrl);
+  const removeFile = (id: string) => {
+    setSelectedFiles(prev => {
+      const fileToRemove = prev.find(f => f.id === id);
+      if (fileToRemove?.url) {
+        URL.revokeObjectURL(fileToRemove.url);
       }
-    }
-    
-    setFiles(prev => prev.filter((_, i) => i !== index));
+      return prev.filter(f => f.id !== id);
+    });
   };
 
-  const clearAllFiles = () => {
-    // Revoke all blob URLs before clearing
-    files.forEach(file => {
-      if (file && typeof file === 'object' && 'file_url' in file) {
-        const fileUrl = (file as any).file_url;
-        if (fileUrl && typeof fileUrl === 'string' && fileUrl.startsWith('blob:')) {
-          URL.revokeObjectURL(fileUrl);
-        }
+  const clearAll = () => {
+    selectedFiles.forEach(file => {
+      if (file.url) {
+        URL.revokeObjectURL(file.url);
       }
     });
-    
-    setFiles([]);
+    setSelectedFiles([]);
   };
 
   const handleUpload = async () => {
+    if (selectedFiles.length === 0) {
+      toast({
+        title: "No files selected",
+        description: "Please select at least one file to upload.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!ministry) {
       toast({
-        title: "Ministry Required",
-        description: "Please select a ministry before uploading.",
-        variant: "destructive"
+        title: "Ministry required",
+        description: "Please select a ministry for your files.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!eventDate) {
+      toast({
+        title: "Event date required",
+        description: "Please select an event date.",
+        variant: "destructive",
       });
       return;
     }
 
     setUploading(true);
-    
+
     try {
-      for (const file of files) {
-        await addDemoFile(file, ministry, eventDate, notes);
+      for (const fileData of selectedFiles) {
+        await addDemoFile(fileData.file, ministry, eventDate, notes);
       }
 
       toast({
-        title: "Demo Upload Complete!",
-        description: `Successfully added ${files.length} files to demo. Redirecting to view files...`,
+        title: "Files uploaded successfully!",
+        description: `${selectedFiles.length} file(s) have been added to your demo collection.`,
       });
 
-      setFiles([]);
-      setUploading(false);
-      
-      // Redirect to My Files page after successful upload
-      setTimeout(() => {
-        navigate('/my-files');
-      }, 1500);
-    } catch (error) {
-      toast({
-        title: "Upload Error",
-        description: error instanceof Error ? error.message : "An error occurred",
-        variant: "destructive"
+      // Clean up object URLs
+      selectedFiles.forEach(file => {
+        if (file.url) {
+          URL.revokeObjectURL(file.url);
+        }
       });
-      setUploading(false);
+
+      // Reset form
+      setSelectedFiles([]);
+      setMinistry("");
+      setEventDate("");
+      setNotes("");
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error.message || "Failed to upload files. Please try again.",
+        variant: "destructive",
+      });
     }
+
+    setUploading(false);
   };
 
-  const getFileIcon = (file: File) => {
-    if (file.type.startsWith('image/')) {
-      return <Image className="h-8 w-8 text-green-500" />;
-    } else if (file.type.startsWith('video/')) {
-      return <Video className="h-8 w-8 text-blue-500" />;
-    } else {
-      return <FileText className="h-8 w-8 text-purple-500" />;
-    }
+  const getFileIcon = (fileType: string) => {
+    if (fileType.startsWith('image/')) return <Image className="h-6 w-6 text-blue-500" />;
+    if (fileType.startsWith('video/')) return <Video className="h-6 w-6 text-purple-500" />;
+    if (fileType.includes('zip') || fileType.includes('rar')) return <Archive className="h-6 w-6 text-orange-500" />;
+    return <FileText className="h-6 w-6 text-gray-500" />;
   };
 
   const formatFileSize = (bytes: number) => {
@@ -145,71 +147,96 @@ const DemoUpload = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background font-poppins">
-      {/* Simple Header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+    <div className="min-h-screen bg-background p-4">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-3xl font-bold">Demo Upload</h1>
             <div className="flex items-center space-x-4">
-              <Button asChild variant="ghost" size="sm">
-                <Link to="/demo/files">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Dashboard
-                </Link>
+              <Button asChild variant="outline">
+                <Link to="/demo/files">View Demo Files</Link>
               </Button>
-              <h1 className="text-2xl font-bold text-primary">ChurchShare Pro - Demo</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">Demo: {currentFileCount + files.length}/6 files</span>
-              <Button asChild>
-                <Link to="/auth">Sign Up for Full Access</Link>
+              <Button asChild variant="outline">
+                <Link to="/">Back to Home</Link>
               </Button>
             </div>
           </div>
-        </div>
-      </header>
-      
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Demo Upload</h1>
-          <p className="text-gray-600">Try uploading files in demo mode (6 total file limit, 4 pre-uploaded)</p>
+          <p className="text-gray-600">
+            Experience ChurchShare's file upload feature with demo data. 
+            Limited to 6 total files in demo mode.
+          </p>
+          <div className="mt-2 text-sm text-blue-600">
+            Current files: {getTotalFileCount()}/6
+          </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Upload Form */}
-          <Card className="shadow-lg border-0">
+          <Card>
             <CardHeader>
-              <CardTitle>Upload Details</CardTitle>
+              <CardTitle>Upload Files</CardTitle>
+              <CardDescription>
+                Select files to upload to your ministry folder
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="ministry">Ministry</Label>
-                  <Select value={ministry} onValueChange={setMinistry}>
-                    <SelectTrigger className="h-12 rounded-xl">
-                      <SelectValue placeholder="Select ministry" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="youth">Youth Ministry</SelectItem>
-                      <SelectItem value="worship">Worship Team</SelectItem>
-                      <SelectItem value="children">Children's Ministry</SelectItem>
-                      <SelectItem value="outreach">Outreach Events</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="eventDate">Event Date</Label>
-                  <Input
-                    id="eventDate"
-                    type="date"
-                    value={eventDate}
-                    onChange={(e) => setEventDate(e.target.value)}
-                    className="h-12 rounded-xl"
-                  />
+              {/* File Selection */}
+              <div className="space-y-2">
+                <Label htmlFor="file-upload">Select Files</Label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                  <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                  <div className="space-y-2">
+                    <p className="text-sm text-gray-600">
+                      Drag files here or click to browse
+                    </p>
+                    <Input
+                      id="file-upload"
+                      type="file"
+                      multiple
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => document.getElementById('file-upload')?.click()}
+                    >
+                      Choose Files
+                    </Button>
+                  </div>
                 </div>
               </div>
 
+              {/* Ministry Selection */}
+              <div className="space-y-2">
+                <Label htmlFor="ministry">Ministry</Label>
+                <Select value={ministry} onValueChange={setMinistry}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a ministry" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {demoMinistries.map((min) => (
+                      <SelectItem key={min.id} value={min.id}>
+                        {min.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Event Date */}
+              <div className="space-y-2">
+                <Label htmlFor="event-date">Event Date</Label>
+                <Input
+                  id="event-date"
+                  type="date"
+                  value={eventDate}
+                  onChange={(e) => setEventDate(e.target.value)}
+                />
+              </div>
+
+              {/* Notes */}
               <div className="space-y-2">
                 <Label htmlFor="notes">Notes (Optional)</Label>
                 <Textarea
@@ -217,98 +244,87 @@ const DemoUpload = () => {
                   placeholder="Add any notes about these files..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="rounded-xl"
                   rows={3}
                 />
               </div>
-            </CardContent>
-          </Card>
 
-          {/* File Drop Zone */}
-          <Card className="shadow-lg border-0">
-            <CardContent className="p-0">
-              <div
-                className="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center hover:border-primary transition-colors"
-                onDrop={handleDrop}
-                onDragOver={(e) => e.preventDefault()}
-                onDragEnter={(e) => e.preventDefault()}
-              >
-                <UploadIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">Drop files here</h3>
-                <p className="text-gray-600 mb-4">
-                  Or click to browse and select files ({currentFileCount + files.length}/6 files)
-                </p>
-                <input
-                  type="file"
-                  multiple
-                  onChange={handleFileSelect}
-                  className="hidden"
-                  id="file-upload"
-                  accept="image/*,video/*,.pdf,.doc,.docx"
-                />
-                <Button asChild variant="outline" size="lg" className="rounded-xl">
-                  <label htmlFor="file-upload" className="cursor-pointer">
-                    Select Files
-                  </label>
+              {/* Upload Button */}
+              <div className="flex space-x-2">
+                <Button
+                  onClick={handleUpload}
+                  disabled={uploading || selectedFiles.length === 0}
+                  className="flex-1"
+                >
+                  {uploading ? "Uploading..." : `Upload ${selectedFiles.length} file(s)`}
                 </Button>
-                <p className="text-sm text-gray-500 mt-4">
-                  Demo supports images, videos, documents. 4 files pre-uploaded, 2 more available!
-                </p>
+                {selectedFiles.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={clearAll}
+                    disabled={uploading}
+                  >
+                    Clear All
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
 
-          {/* File List */}
-          {files.length > 0 && (
-            <Card className="shadow-lg border-0">
-              <CardHeader>
-                <CardTitle>Selected Files ({files.length})</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {files.map((file, index) => (
-                    <div key={index} className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
-                      {getFileIcon(file)}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{file.name}</p>
-                        <p className="text-sm text-gray-600">{formatFileSize(file.size)}</p>
-                      </div>
-                      {!uploading && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeFile(index)}
-                          className="text-gray-400 hover:text-red-500"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
+          {/* Selected Files Preview */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Selected Files ({selectedFiles.length})</CardTitle>
+              <CardDescription>
+                Preview of files ready for upload
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {selectedFiles.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No files selected</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {selectedFiles.map((fileData) => (
+                    <div key={fileData.id} className="flex items-center space-x-3 p-3 border rounded-lg">
+                      {fileData.url ? (
+                        <img
+                          src={fileData.url}
+                          alt={fileData.file.name}
+                          className="h-12 w-12 object-cover rounded"
+                        />
+                      ) : (
+                        <div className="h-12 w-12 flex items-center justify-center">
+                          {getFileIcon(fileData.file.type)}
+                        </div>
                       )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {fileData.file.name}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {formatFileSize(fileData.file.size)}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeFile(fileData.id)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
                     </div>
                   ))}
                 </div>
-
-                <div className="mt-6 flex gap-4">
-                  <Button
-                    onClick={handleUpload}
-                    disabled={uploading || !ministry || files.length === 0}
-                    className="flex-1 h-12 rounded-xl bg-primary hover:bg-primary/90"
-                  >
-                    {uploading ? "Adding to Demo..." : "Add to Demo"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={clearAllFiles}
-                    disabled={uploading}
-                    className="h-12 rounded-xl"
-                  >
-                    Clear All
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+              )}
+            </CardContent>
+          </Card>
         </div>
-      </main>
+      </div>
     </div>
   );
 };
