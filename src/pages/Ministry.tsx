@@ -1,3 +1,4 @@
+
 import Header from "@/components/Header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -182,7 +183,7 @@ const Ministry = () => {
               <CardContent className="p-0">
                 <div className="aspect-video bg-gray-100 rounded-t-lg overflow-hidden relative">
                   <img
-                    src={file.thumbnail || file.file_url}
+                    src={file.file_url}
                     alt={file.file_name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                   />
@@ -210,7 +211,7 @@ const Ministry = () => {
                         </DialogHeader>
                         <div className="space-y-4">
                           <img
-                            src={file.thumbnail || file.file_url}
+                            src={file.file_url}
                             alt={file.file_name}
                             className="w-full rounded-lg"
                           />
