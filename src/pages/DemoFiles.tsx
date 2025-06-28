@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,12 +9,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { FileText, Image, Video, ArrowLeft, Upload, Sparkles, Search, User, Users, Calendar, Camera, ArrowRight, Folder } from "lucide-react";
+import { FileText, Image, Video, ArrowLeft, Upload, Sparkles, Search, User, Users, Calendar, Camera, ArrowRight, Folder, Menu, X } from "lucide-react";
 import { useDemoContext } from "@/contexts/DemoContext";
 import { Link } from "react-router-dom";
+import { useState } from "react";
 
 const DemoFiles = () => {
   const { demoFiles, clearDemoFiles, demoMinistries, currentDemoUser } = useDemoContext();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Calculate user-uploaded files (excluding sample files)
   const sampleFileIds = ['demo-file-1', 'demo-file-2', 'demo-file-3', 'demo-file-4'];
@@ -47,13 +48,13 @@ const DemoFiles = () => {
           <div className="flex items-center justify-between h-16">
             {/* Left: Logotype */}
             <div className="flex items-center">
-              <Link to="/" className="text-2xl font-bold text-primary flex items-center">
+              <Link to="/" className="text-xl sm:text-2xl font-bold text-primary flex items-center">
                 ChurchShare Pro
                 <div className="w-2 h-2 bg-secondary rounded-full ml-1 mt-1"></div>
               </Link>
             </div>
 
-            {/* Center-left: Navigation Links */}
+            {/* Center-left: Navigation Links - Desktop Only */}
             <nav className="hidden md:flex items-center space-x-8 ml-12">
               <Link to="/demo/files" className="text-primary font-medium border-b-2 border-primary pb-1">
                 Dashboard
@@ -63,7 +64,7 @@ const DemoFiles = () => {
               </Link>
             </nav>
 
-            {/* Center: Search Bar */}
+            {/* Center: Search Bar - Desktop Only */}
             <div className="flex-1 max-w-lg mx-8 hidden md:block">
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -74,8 +75,8 @@ const DemoFiles = () => {
               </div>
             </div>
 
-            {/* Center-right: Upload Button */}
-            <div className="flex items-center space-x-4">
+            {/* Right side - Desktop */}
+            <div className="hidden md:flex items-center space-x-4">
               <Button asChild className="rounded-full bg-primary hover:bg-primary/90">
                 <Link to="/demo/upload">
                   <Upload className="h-4 w-4 mr-2" />
@@ -83,7 +84,6 @@ const DemoFiles = () => {
                 </Link>
               </Button>
 
-              {/* Far right: Avatar */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="rounded-full p-1 h-10 w-10">
@@ -107,18 +107,93 @@ const DemoFiles = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+
+            {/* Mobile Menu Button */}
+            <div className="md:hidden flex items-center space-x-2">
+              <Button asChild size="sm" className="rounded-full bg-primary hover:bg-primary/90">
+                <Link to="/demo/upload">
+                  <Upload className="h-4 w-4" />
+                </Link>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="p-2"
+              >
+                {mobileMenuOpen ? (
+                  <X className="h-5 w-5" />
+                ) : (
+                  <Menu className="h-5 w-5" />
+                )}
+              </Button>
+            </div>
           </div>
+
+          {/* Mobile Navigation Menu */}
+          {mobileMenuOpen && (
+            <div className="md:hidden border-t border-gray-200/50 py-4">
+              <div className="flex flex-col space-y-3">
+                {/* Mobile Search */}
+                <div className="relative mb-3">
+                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Search files..."
+                    className="pl-12 bg-white border-gray-300 rounded-full h-10 w-full"
+                  />
+                </div>
+                
+                {/* Mobile Navigation Links */}
+                <Link 
+                  to="/demo/files" 
+                  className="text-primary font-medium px-3 py-2 rounded-md bg-primary/10"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Dashboard
+                </Link>
+                <Link 
+                  to="/my-files" 
+                  className="text-gray-700 hover:text-primary transition-colors font-medium px-3 py-2 rounded-md hover:bg-gray-50"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  My Files
+                </Link>
+                
+                {/* Mobile User Menu */}
+                <div className="border-t pt-3 mt-3">
+                  <div className="flex items-center space-x-3 px-3 py-2">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
+                        {currentDemoUser.first_name[0]}{currentDemoUser.last_name[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="text-sm font-medium text-gray-700">{currentDemoUser.email}</div>
+                      <div className="text-xs text-gray-400">{currentDemoUser.role} (Demo)</div>
+                    </div>
+                  </div>
+                  <Link 
+                    to="/" 
+                    className="block text-gray-700 hover:text-primary transition-colors font-medium px-3 py-2 rounded-md hover:bg-gray-50"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Back to Landing
+                  </Link>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </header>
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Hero / Welcome Banner */}
-        <div className="bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 rounded-3xl p-8 mb-8 text-white shadow-2xl relative overflow-hidden group cursor-pointer hover:shadow-3xl transition-all duration-300" title="Click to open Upload wizard">
+        <div className="bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 rounded-3xl p-6 sm:p-8 mb-8 text-white shadow-2xl relative overflow-hidden group cursor-pointer hover:shadow-3xl transition-all duration-300" title="Click to open Upload wizard">
           <div className="max-w-4xl">
-            <h1 className="text-3xl md:text-4xl font-bold mb-4">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4">
               Welcome back, {userName}! 👋
             </h1>
-            <p className="text-lg text-gray-100 mb-6 leading-relaxed">
+            <p className="text-base sm:text-lg text-gray-100 mb-6 leading-relaxed">
               You have access to {demoMinistries.length} ministries with {totalFiles} total files. Recent uploads include your demo files from today's session. This is demo mode - try uploading files or exploring the features!
             </p>
             <Button asChild className="bg-secondary hover:bg-secondary/90 text-white rounded-full">
