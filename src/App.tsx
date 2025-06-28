@@ -22,6 +22,7 @@ import DemoFiles from "./pages/DemoFiles";
 import DemoUserManagement from "./pages/DemoUserManagement";
 import Admin from "./pages/Admin";
 import Pricing from "./pages/Pricing";
+import SupportRequests from "./pages/SupportRequests";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -51,6 +52,7 @@ const App = () => (
                     <Route path="/demo/users" element={<DemoUserManagement />} />
                     <Route path="/admin" element={<Admin />} />
                     <Route path="/pricing" element={<Pricing />} />
+                    <Route path="/support" element={<SupportRequests />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </InactivityTracker>

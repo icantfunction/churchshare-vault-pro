@@ -15,62 +15,75 @@ export const useRealtimeKPIs = () => {
     totalFiles: 0,
     totalSize: 0,
     recentFiles: 0,
-    loading: true
+    loading: true,
   });
+  
   const { profile } = useAuth();
 
-  const refreshKPIs = async () => {
+  const fetchKPIs = async () => {
     if (!profile) return;
 
     try {
-      // Check if user is admin/director (can see all files) or regular user (only their files)
-      const isDirector = ['Director', 'SuperOrg', 'Admin'].includes(profile.role);
+      const isAdmin = profile.role === 'Admin' || profile.role === 'Director' || profile.role === 'SuperOrg';
       
-      let query = supabase
+      // Base query for files
+      let filesQuery = supabase
         .from('files')
-        .select('created_at, uploader_id');
+        .select('file_size, created_at, uploader_id');
 
-      // If not admin/director, filter to only user's files
-      if (!isDirector) {
-        query = query.eq('uploader_id', profile.id);
+      // If not admin, filter by user's files only
+      if (!isAdmin) {
+        filesQuery = filesQuery.eq('uploader_id', profile.id);
       }
 
-      const { data, error } = await query;
+      const { data: files, error } = await filesQuery;
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching KPI data:', error);
+        return;
+      }
 
-      const totalFiles = data?.length || 0;
-      // Since we don't have file_size column, we'll set totalSize to 0 for now
-      const totalSize = 0;
+      // Calculate totals
+      const totalFiles = files?.length || 0;
+      const totalSize = files?.reduce((sum, file) => sum + (file.file_size || 0), 0) || 0;
       
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
+      // Calculate recent files (last 7 days)
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
       
-      const recentFiles = data?.filter(file => 
-        new Date(file.created_at) > weekAgo
+      const recentFiles = files?.filter(file => 
+        new Date(file.created_at) > oneWeekAgo
       ).length || 0;
 
       setKpiData({
         totalFiles,
         totalSize,
         recentFiles,
-        loading: false
+        loading: false,
       });
     } catch (error) {
-      console.error('Error fetching KPIs:', error);
+      console.error('Error in fetchKPIs:', error);
       setKpiData(prev => ({ ...prev, loading: false }));
     }
   };
 
+  const refreshKPIs = () => {
+    setKpiData(prev => ({ ...prev, loading: true }));
+    fetchKPIs();
+  };
+
+  useEffect(() => {
+    if (profile) {
+      fetchKPIs();
+    }
+  }, [profile]);
+
+  // Set up real-time subscription
   useEffect(() => {
     if (!profile) return;
 
-    // Initial load
-    refreshKPIs();
-
-    // Set up realtime subscription for files table
     const channel = supabase
-      .channel('files_updates')
+      .channel('kpi-changes')
       .on(
         'postgres_changes',
         {
@@ -79,8 +92,7 @@ export const useRealtimeKPIs = () => {
           table: 'files'
         },
         () => {
-          console.log('Files changed, refreshing KPIs...');
-          refreshKPIs();
+          fetchKPIs();
         }
       )
       .subscribe();
@@ -88,7 +100,7 @@ export const useRealtimeKPIs = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [profile?.id, profile?.role]);
+  }, [profile]);
 
   return { kpiData, refreshKPIs };
 };

@@ -3,14 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Files, HardDrive, TrendingUp } from "lucide-react";
 import { useRealtimeKPIs } from "@/hooks/useRealtimeKPIs";
 import { useAuth } from "@/contexts/AuthContext";
-
-const formatFileSize = (bytes: number) => {
-  if (bytes === 0) return '0 Bytes';
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-};
+import { formatFileSize } from "@/utils/formatFileSize";
 
 const KPICards = () => {
   const { kpiData } = useRealtimeKPIs();
