@@ -75,13 +75,16 @@ const Pricing = () => {
       storage: "50 TB",
       overage: "$9 / 100 GB",
       users: "Unlimited users",
-      extras: "multi-campus, 24h SLA, lightning speeds",
+      extras: "multi-campus, 24h SLA, lightning speeds, newest features",
       icon: Shield,
       popular: false,
       features: [
         "50 TB included storage",
         "Unlimited users",
         "Lightning uploads/download speeds",
+        "Newest features (early access)",
+        "Advanced security controls",
+        "Custom integration support",
         "Multi-campus support",
         "24-hour SLA guarantee",
         "Dedicated account manager"
