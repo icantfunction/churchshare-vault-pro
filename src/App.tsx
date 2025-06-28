@@ -19,6 +19,7 @@ import Ministry from "./pages/Ministry";
 import Upload from "./pages/Upload";
 import DemoUpload from "./pages/DemoUpload";
 import DemoFiles from "./pages/DemoFiles";
+import DemoUserManagement from "./pages/DemoUserManagement";
 import Admin from "./pages/Admin";
 import Pricing from "./pages/Pricing";
 import NotFound from "./pages/NotFound";
@@ -47,6 +48,7 @@ const App = () => (
                     <Route path="/upload" element={<Upload />} />
                     <Route path="/demo/upload" element={<DemoUpload />} />
                     <Route path="/demo/files" element={<DemoFiles />} />
+                    <Route path="/demo/users" element={<DemoUserManagement />} />
                     <Route path="/admin" element={<Admin />} />
                     <Route path="/pricing" element={<Pricing />} />
                     <Route path="*" element={<NotFound />} />

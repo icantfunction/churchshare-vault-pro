@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -313,7 +314,7 @@ const DemoFiles = () => {
                 </Link>
               </Button>
               <Button asChild variant="outline" className="h-14 rounded-xl border-2 hover:border-green-400 hover:bg-green-50">
-                <Link to="/my-files">
+                <Link to="/demo/users">
                   <Users className="h-5 w-5 mr-2" />
                   Manage Users (Demo)
                 </Link>
