@@ -21,9 +21,12 @@ describe('KPICards', () => {
     loading: false,
   }
 
+  const mockRefreshKPIs = vi.fn()
+
   beforeEach(() => {
     vi.mocked(useRealtimeKPIs).mockReturnValue({
       kpiData: mockKPIData,
+      refreshKPIs: mockRefreshKPIs,
     })
     vi.mocked(useAuth).mockReturnValue({
       profile: { role: 'Member' },
@@ -55,6 +58,7 @@ describe('KPICards', () => {
   it('shows loading state', () => {
     vi.mocked(useRealtimeKPIs).mockReturnValue({
       kpiData: { ...mockKPIData, loading: true },
+      refreshKPIs: mockRefreshKPIs,
     })
 
     render(<KPICards />)
@@ -65,6 +69,7 @@ describe('KPICards', () => {
   it('formats file sizes correctly', () => {
     vi.mocked(useRealtimeKPIs).mockReturnValue({
       kpiData: { ...mockKPIData, totalSize: 1024 }, // 1KB
+      refreshKPIs: mockRefreshKPIs,
     })
 
     render(<KPICards />)
