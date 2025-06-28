@@ -1,3 +1,4 @@
+
 # ChurchShare
 
 A secure, simple file sharing platform designed specifically for churches and creative ministries. Built with React, TypeScript, and Supabase.
@@ -25,16 +26,18 @@ A secure, simple file sharing platform designed specifically for churches and cr
    ./setup.sh  # One-click setup script
    ```
 
-2. **Configure environment variables:**
+2. **Configure environment variables (MANDATORY):**
    ```bash
    cp .env.example .env
    ```
    
-   Edit `.env` and add your Supabase credentials:
+   **⚠️ IMPORTANT**: You MUST edit `.env` and add your Supabase credentials before running the app:
    ```env
    VITE_SUPABASE_URL=your-supabase-project-url
    VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
    ```
+   
+   **The app will not start without these environment variables configured.**
 
 3. **Start development server:**
    ```bash
