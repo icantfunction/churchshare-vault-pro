@@ -1,5 +1,6 @@
 
-import { render, screen } from '@testing-library/react'
+import { render } from '@testing-library/react'
+import { screen } from '@testing-library/dom'
 import KPICards from './KPICards'
 import { useRealtimeKPIs } from '@/hooks/useRealtimeKPIs'
 import { useAuth } from '@/contexts/AuthContext'
