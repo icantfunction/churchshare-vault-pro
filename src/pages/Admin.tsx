@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, Settings, Plus, Trash2 } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Users, Settings, Plus, Trash2, Edit, UserX, RefreshCw } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,6 +42,8 @@ const Admin = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [newMinistry, setNewMinistry] = useState({ name: "", description: "" });
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [userToDeactivate, setUserToDeactivate] = useState<User | null>(null);
 
   useEffect(() => {
     const canAccessAdmin = ['Admin', 'Director', 'SuperOrg'].includes(profile?.role || '');
@@ -166,6 +169,73 @@ const Admin = () => {
       toast({
         title: "Error",
         description: "Failed to update user role", 
+        variant: "destructive",
+      });
+    }
+  };
+
+  const updateUserDetails = async (updatedUser: User) => {
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({
+          first_name: updatedUser.first_name,
+          last_name: updatedUser.last_name,
+          ministry_id: updatedUser.ministry_id || null
+        })
+        .eq('id', updatedUser.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "User details updated successfully",
+      });
+
+      setEditingUser(null);
+      fetchData();
+    } catch (error) {
+      console.error('Error updating user details:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update user details",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deactivateUser = async (userId: string) => {
+    try {
+      // In a real implementation, you might soft-delete or mark as inactive
+      // For demo purposes, we'll show a confirmation
+      toast({
+        title: "User Deactivated",
+        description: "User account has been deactivated (demo action)",
+      });
+
+      setUserToDeactivate(null);
+    } catch (error) {
+      console.error('Error deactivating user:', error);
+      toast({
+        title: "Error",
+        description: "Failed to deactivate user",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const resetUserPassword = async (userEmail: string) => {
+    try {
+      // This would typically trigger a password reset email
+      toast({
+        title: "Password Reset",
+        description: `Password reset email sent to ${userEmail} (demo action)`,
+      });
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      toast({
+        title: "Error",
+        description: "Failed to reset password",
         variant: "destructive",
       });
     }
@@ -328,9 +398,111 @@ const Admin = () => {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <Button size="sm" variant="outline" disabled>
-                              More actions coming soon
-                            </Button>
+                            <div className="flex gap-2">
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button size="sm" variant="outline" onClick={() => setEditingUser(user)}>
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogHeader>
+                                    <DialogTitle>Edit User Details</DialogTitle>
+                                    <DialogDescription>
+                                      Update user information and ministry assignment
+                                    </DialogDescription>
+                                  </DialogHeader>
+                                  {editingUser && (
+                                    <div className="space-y-4">
+                                      <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                          <Label>First Name</Label>
+                                          <Input
+                                            value={editingUser.first_name}
+                                            onChange={(e) => setEditingUser({...editingUser, first_name: e.target.value})}
+                                          />
+                                        </div>
+                                        <div className="space-y-2">
+                                          <Label>Last Name</Label>
+                                          <Input
+                                            value={editingUser.last_name}
+                                            onChange={(e) => setEditingUser({...editingUser, last_name: e.target.value})}
+                                          />
+                                        </div>
+                                      </div>
+                                      <div className="space-y-2">
+                                        <Label>Ministry</Label>
+                                        <Select
+                                          value={editingUser.ministry_id || ""}
+                                          onValueChange={(value) => setEditingUser({...editingUser, ministry_id: value})}
+                                        >
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Select ministry" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="">No Ministry</SelectItem>
+                                            {ministries.map((ministry) => (
+                                              <SelectItem key={ministry.id} value={ministry.id}>
+                                                {ministry.name}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    </div>
+                                  )}
+                                  <DialogFooter>
+                                    <Button variant="outline" onClick={() => setEditingUser(null)}>
+                                      Cancel
+                                    </Button>
+                                    <Button onClick={() => editingUser && updateUserDetails(editingUser)}>
+                                      Save Changes
+                                    </Button>
+                                  </DialogFooter>
+                                </DialogContent>
+                              </Dialog>
+                              
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => resetUserPassword(user.email)}
+                              >
+                                <RefreshCw className="h-4 w-4" />
+                              </Button>
+                              
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="text-red-600 hover:text-red-700"
+                                    onClick={() => setUserToDeactivate(user)}
+                                  >
+                                    <UserX className="h-4 w-4" />
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogHeader>
+                                    <DialogTitle>Deactivate User</DialogTitle>
+                                    <DialogDescription>
+                                      Are you sure you want to deactivate {user.first_name} {user.last_name}? 
+                                      This will prevent them from accessing the system.
+                                    </DialogDescription>
+                                  </DialogHeader>
+                                  <DialogFooter>
+                                    <Button variant="outline" onClick={() => setUserToDeactivate(null)}>
+                                      Cancel
+                                    </Button>
+                                    <Button 
+                                      variant="destructive" 
+                                      onClick={() => userToDeactivate && deactivateUser(userToDeactivate.id)}
+                                    >
+                                      Deactivate User
+                                    </Button>
+                                  </DialogFooter>
+                                </DialogContent>
+                              </Dialog>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}

@@ -1,16 +1,28 @@
-
 import Header from "@/components/Header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { Upload, Download, Calendar, User, FileText, Image, Video, Eye } from "lucide-react";
 import { useParams, Link } from "react-router-dom";
 import { useDemoContext } from "@/contexts/DemoContext";
+import { useState } from "react";
+
+const ITEMS_PER_PAGE = 12;
 
 const Ministry = () => {
   const { id } = useParams();
   const { isDemoMode, demoMinistries, getDemoFilesByMinistry, currentDemoUser } = useDemoContext();
+  const [currentPage, setCurrentPage] = useState(1);
   
   // Get ministry data based on demo mode
   const ministry = isDemoMode ? 
@@ -24,7 +36,7 @@ const Ministry = () => {
     };
 
   // Get files for this ministry
-  const ministryFiles = isDemoMode ? getDemoFilesByMinistry(id || 'youth') : [
+  const allMinistryFiles = isDemoMode ? getDemoFilesByMinistry(id || 'youth') : [
     {
       id: "1",
       file_name: "Youth_Camp_2024_Group_Photo.jpg",
@@ -67,6 +79,16 @@ const Ministry = () => {
     },
   ];
 
+  // Pagination logic
+  const totalPages = Math.ceil(allMinistryFiles.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const ministryFiles = allMinistryFiles.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -101,7 +123,7 @@ const Ministry = () => {
     return 'document';
   };
 
-  // Check if user can upload (in demo mode, always allow; in real mode, check permissions)
+  // Check if user can upload
   const canUpload = isDemoMode || currentDemoUser?.role === 'Admin' || currentDemoUser?.role === 'MinistryLeader';
 
   return (
@@ -124,7 +146,7 @@ const Ministry = () => {
               <p className="text-lg opacity-90 mb-4">{ministry.description}</p>
               <div className="flex items-center gap-4">
                 <Badge variant="secondary" className="bg-white/20 text-white border-0">
-                  {ministryFiles.length} files
+                  {allMinistryFiles.length} files
                 </Badge>
                 {canUpload && (
                   <Button asChild variant="secondary" className="rounded-xl">
@@ -138,6 +160,20 @@ const Ministry = () => {
             </div>
           </div>
         </div>
+
+        {/* Results Summary */}
+        {allMinistryFiles.length > 0 && (
+          <div className="mb-6 flex justify-between items-center">
+            <p className="text-gray-600">
+              Showing {ministryFiles.length} of {allMinistryFiles.length} files
+            </p>
+            {totalPages > 1 && (
+              <p className="text-sm text-gray-500">
+                Page {currentPage} of {totalPages}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* File Gallery */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -257,7 +293,7 @@ const Ministry = () => {
         </div>
 
         {/* Empty State */}
-        {ministryFiles.length === 0 && (
+        {allMinistryFiles.length === 0 && (
           <Card className="shadow-lg border-0">
             <CardContent className="p-12 text-center">
               <Upload className="h-16 w-16 text-gray-400 mx-auto mb-4" />
@@ -278,12 +314,54 @@ const Ministry = () => {
           </Card>
         )}
 
-        {/* Load More */}
-        {ministryFiles.length > 0 && (
-          <div className="text-center mt-8">
-            <Button variant="outline" size="lg" className="rounded-xl">
-              Load More Files
-            </Button>
+        {/* Pagination */}
+        {allMinistryFiles.length > ITEMS_PER_PAGE && (
+          <div className="flex justify-center mt-8">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious 
+                    onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                    className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+                
+                {[...Array(totalPages)].map((_, i) => {
+                  const page = i + 1;
+                  if (
+                    page === 1 ||
+                    page === totalPages ||
+                    (page >= currentPage - 1 && page <= currentPage + 1)
+                  ) {
+                    return (
+                      <PaginationItem key={page}>
+                        <PaginationLink
+                          onClick={() => handlePageChange(page)}
+                          isActive={currentPage === page}
+                          className="cursor-pointer"
+                        >
+                          {page}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  } else if (page === currentPage - 2 || page === currentPage + 2) {
+                    return (
+                      <PaginationItem key={page}>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    );
+                  }
+                  return null;
+                })}
+
+                <PaginationItem>
+                  <PaginationNext 
+                    onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
           </div>
         )}
       </main>

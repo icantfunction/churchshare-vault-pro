@@ -13,12 +13,14 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDemoContext } from "@/contexts/DemoContext";
+import { useSearch } from "@/contexts/SearchContext";
 
 const Header = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { profile, signOut } = useAuth();
   const { isDemoMode, currentDemoUser } = useDemoContext();
+  const { globalSearchTerm, setGlobalSearchTerm } = useSearch();
 
   const handleLogout = async () => {
     await signOut();
@@ -27,6 +29,17 @@ const Header = () => {
       description: "Successfully logged out of ChurchShare Pro",
     });
     navigate("/");
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setGlobalSearchTerm(e.target.value);
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (globalSearchTerm.trim()) {
+      navigate(`/my-files?search=${encodeURIComponent(globalSearchTerm)}`);
+    }
   };
 
   const userInitials = isDemoMode 
@@ -57,13 +70,17 @@ const Header = () => {
 
           {/* Center: Search Bar */}
           <div className="flex-1 max-w-lg mx-8 hidden md:block">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Search files..."
-                className="pl-12 bg-white border-gray-300 rounded-full h-10 w-full"
-              />
-            </div>
+            <form onSubmit={handleSearchSubmit}>
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Search files..."
+                  value={globalSearchTerm}
+                  onChange={handleSearchChange}
+                  className="pl-12 bg-white border-gray-300 rounded-full h-10 w-full"
+                />
+              </div>
+            </form>
           </div>
 
           {/* Center-right: Upload Button */}
@@ -88,7 +105,7 @@ const Header = () => {
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuContent align="end" className="w-56 bg-white border shadow-lg">
                 <div className="px-2 py-1.5 text-sm text-gray-600">
                   {isDemoMode ? currentDemoUser.email : profile?.email}
                   <div className="text-xs text-gray-400">

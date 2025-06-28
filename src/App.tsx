@@ -1,5 +1,4 @@
 
-import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,61 +6,58 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { DemoProvider } from "@/contexts/DemoContext";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { SearchProvider } from "@/contexts/SearchContext";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import InactivityTracker from "@/components/InactivityTracker";
-
-const Index = lazy(() => import("@/pages/Index"));
-const Pricing = lazy(() => import("@/pages/Pricing"));
-const Auth = lazy(() => import("@/pages/Auth"));
-const Login = lazy(() => import("@/pages/Login"));
-const Signup = lazy(() => import("@/pages/Signup"));
-const Dashboard = lazy(() => import("@/pages/Dashboard"));
-const Upload = lazy(() => import("@/pages/Upload"));
-const MyFiles = lazy(() => import("@/pages/MyFiles"));
-const DemoUpload = lazy(() => import("@/pages/DemoUpload"));
-const DemoFiles = lazy(() => import("@/pages/DemoFiles"));
-const Ministry = lazy(() => import("@/pages/Ministry"));
-const Admin = lazy(() => import("@/pages/Admin"));
-const NotFound = lazy(() => import("@/pages/NotFound"));
+import Index from "./pages/Index";
+import Auth from "./pages/Auth";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import Dashboard from "./pages/Dashboard";
+import MyFiles from "./pages/MyFiles";
+import Ministry from "./pages/Ministry";
+import Upload from "./pages/Upload";
+import DemoUpload from "./pages/DemoUpload";
+import DemoFiles from "./pages/DemoFiles";
+import Admin from "./pages/Admin";
+import Pricing from "./pages/Pricing";
+import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const App = () => {
-  return (
-    <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AuthProvider>
-              <DemoProvider>
-                <InactivityTracker timeoutMinutes={5} warningSeconds={30}>
-                  <Suspense fallback={<div>Loading...</div>}>
-                    <Routes>
-                      <Route path="/" element={<Index />} />
-                      <Route path="/pricing" element={<Pricing />} />
-                      <Route path="/auth" element={<Auth />} />
-                      <Route path="/login" element={<Login />} />
-                      <Route path="/signup" element={<Signup />} />
-                      <Route path="/dashboard" element={<Dashboard />} />
-                      <Route path="/upload" element={<Upload />} />
-                      <Route path="/my-files" element={<MyFiles />} />
-                      <Route path="/demo/upload" element={<DemoUpload />} />
-                      <Route path="/demo/files" element={<DemoFiles />} />
-                      <Route path="/ministry/:id" element={<Ministry />} />
-                      <Route path="/admin" element={<Admin />} />
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </Suspense>
-                </InactivityTracker>
-              </DemoProvider>
-            </AuthProvider>
-          </BrowserRouter>
-        </TooltipProvider>
-      </QueryClientProvider>
-    </ErrorBoundary>
-  );
-};
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <ErrorBoundary>
+          <AuthProvider>
+            <DemoProvider>
+              <SearchProvider>
+                <InactivityTracker />
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/signup" element={<Signup />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/my-files" element={<MyFiles />} />
+                  <Route path="/ministry/:id" element={<Ministry />} />
+                  <Route path="/upload" element={<Upload />} />
+                  <Route path="/demo/upload" element={<DemoUpload />} />
+                  <Route path="/demo/files" element={<DemoFiles />} />
+                  <Route path="/admin" element={<Admin />} />
+                  <Route path="/pricing" element={<Pricing />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </SearchProvider>
+            </DemoProvider>
+          </AuthProvider>
+        </ErrorBoundary>
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
 
 export default App;
