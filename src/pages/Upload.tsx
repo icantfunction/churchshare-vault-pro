@@ -13,6 +13,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useDemoContext } from "@/contexts/DemoContext";
 import { Link } from "react-router-dom";
 
+interface FormErrors {
+  ministry?: string;
+  files?: string;
+}
+
 const Upload = () => {
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -20,6 +25,7 @@ const Upload = () => {
   const [ministry, setMinistry] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [notes, setNotes] = useState("");
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
   const { toast } = useToast();
   const { isDemoMode, addDemoFile, getTotalFileCount } = useDemoContext();
 
@@ -48,7 +54,11 @@ const Upload = () => {
     
     console.log('[DEBUG] Files dropped successfully:', droppedFiles.length);
     setFiles(prev => [...prev, ...droppedFiles]);
-  }, [files.length, currentFileCount, isDemoMode, toast]);
+    // Clear files error when files are added
+    if (formErrors.files) {
+      setFormErrors(prev => ({ ...prev, files: undefined }));
+    }
+  }, [files.length, currentFileCount, isDemoMode, toast, formErrors.files]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -73,6 +83,10 @@ const Upload = () => {
       
       console.log('[DEBUG] Files selected successfully:', selectedFiles.length);
       setFiles(prev => [...prev, ...selectedFiles]);
+      // Clear files error when files are added
+      if (formErrors.files) {
+        setFormErrors(prev => ({ ...prev, files: undefined }));
+      }
     }
   };
 
@@ -80,11 +94,26 @@ const Upload = () => {
     setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleUpload = async () => {
+  const validateForm = () => {
+    const errors: FormErrors = {};
+
     if (!ministry) {
+      errors.ministry = "Please select a ministry";
+    }
+
+    if (files.length === 0) {
+      errors.files = "Please select at least one file to upload";
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleUpload = async () => {
+    if (!validateForm()) {
       toast({
-        title: "Ministry Required",
-        description: "Please select a ministry before uploading.",
+        title: "Please fix the errors",
+        description: "Check the highlighted fields and try again",
         variant: "destructive"
       });
       return;
@@ -133,6 +162,7 @@ const Upload = () => {
       setFiles([]);
       setUploadProgress({});
       setUploading(false);
+      setFormErrors({});
     } catch (error) {
       console.error('[DEBUG] Upload error:', error);
       toast({
@@ -141,6 +171,14 @@ const Upload = () => {
         variant: "destructive"
       });
       setUploading(false);
+    }
+  };
+
+  const handleMinistryChange = (value: string) => {
+    setMinistry(value);
+    // Clear ministry error when user selects a ministry
+    if (formErrors.ministry) {
+      setFormErrors(prev => ({ ...prev, ministry: undefined }));
     }
   };
 
@@ -209,9 +247,11 @@ const Upload = () => {
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="ministry">Ministry</Label>
-                  <Select value={ministry} onValueChange={setMinistry}>
-                    <SelectTrigger className="h-12 rounded-xl">
+                  <Label htmlFor="ministry" className={formErrors.ministry ? 'text-red-600' : ''}>
+                    Ministry *
+                  </Label>
+                  <Select value={ministry} onValueChange={handleMinistryChange}>
+                    <SelectTrigger className={`h-12 rounded-xl ${formErrors.ministry ? 'border-red-500 bg-red-50' : ''}`}>
                       <SelectValue placeholder="Select ministry" />
                     </SelectTrigger>
                     <SelectContent>
@@ -221,6 +261,9 @@ const Upload = () => {
                       <SelectItem value="outreach">Outreach Events</SelectItem>
                     </SelectContent>
                   </Select>
+                  {formErrors.ministry && (
+                    <p className="text-red-600 text-sm">{formErrors.ministry}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -253,14 +296,18 @@ const Upload = () => {
           <Card className="shadow-lg border-0">
             <CardContent className="p-0">
               <div
-                className="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center hover:border-primary transition-colors"
+                className={`border-2 border-dashed rounded-xl p-12 text-center hover:border-primary transition-colors ${
+                  formErrors.files ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                }`}
                 onDrop={handleDrop}
                 onDragOver={(e) => e.preventDefault()}
                 onDragEnter={(e) => e.preventDefault()}
               >
-                <UploadIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">Drop files here</h3>
-                <p className="text-gray-600 mb-4">
+                <UploadIcon className={`h-16 w-16 mx-auto mb-4 ${formErrors.files ? 'text-red-400' : 'text-gray-400'}`} />
+                <h3 className={`text-xl font-semibold mb-2 ${formErrors.files ? 'text-red-600' : ''}`}>
+                  Drop files here
+                </h3>
+                <p className={`mb-4 ${formErrors.files ? 'text-red-600' : 'text-gray-600'}`}>
                   Or click to browse and select files
                   {isDemoMode && ` (${currentFileCount + files.length}/6 files)`}
                 </p>
@@ -281,6 +328,9 @@ const Upload = () => {
                   Supports images, videos, documents up to 500MB each
                   {isDemoMode && " (Demo: 6 total file limit)"}
                 </p>
+                {formErrors.files && (
+                  <p className="text-red-600 text-sm mt-2">{formErrors.files}</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -332,14 +382,17 @@ const Upload = () => {
                 <div className="mt-6 flex gap-4">
                   <Button
                     onClick={handleUpload}
-                    disabled={uploading || !ministry || files.length === 0}
+                    disabled={uploading}
                     className="flex-1 h-12 rounded-xl bg-primary hover:bg-primary/90"
                   >
                     {uploading ? (isDemoMode ? "Adding to Demo..." : "Uploading...") : (isDemoMode ? "Add to Demo" : "Upload Files")}
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => setFiles([])}
+                    onClick={() => {
+                      setFiles([]);
+                      setFormErrors(prev => ({ ...prev, files: undefined }));
+                    }}
                     disabled={uploading}
                     className="h-12 rounded-xl"
                   >
