@@ -1,5 +1,4 @@
 
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 interface DemoFile {
@@ -202,7 +201,7 @@ export const DemoProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const files = JSON.parse(savedFiles);
         setDemoFiles(prev => [...sampleFiles, ...files]);
       } catch (error) {
-        console.error('Error loading demo files:', error);
+        // Silently handle JSON parsing errors
       }
     }
   }, []);
