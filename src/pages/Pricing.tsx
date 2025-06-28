@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -37,14 +36,14 @@ const Pricing = () => {
       storage: "100 GB",
       overage: "$9 / 100 GB",
       users: "25 users",
-      extras: "custom logo",
+      extras: "logo branding",
       icon: Database,
       popular: false,
       features: [
         "100 GB included storage",
         "Up to 25 users",
         "Ministry-specific permissions",
-        "Custom logo branding",
+        "Logo branding",
         "HD preview generation",
         "Priority email support"
       ]
@@ -56,13 +55,12 @@ const Pricing = () => {
       storage: "10 TB",
       overage: "$9 / 100 GB",
       users: "100+ users",
-      extras: "custom domain, 4K previews",
+      extras: "4K previews",
       icon: Zap,
       popular: true,
       features: [
         "10 TB included storage",
         "Unlimited users (100+)",
-        "Custom domain",
         "4K preview generation",
         "Glacier-instant archive",
         "Advanced analytics",
@@ -75,17 +73,15 @@ const Pricing = () => {
       annualPrice: "$249",
       storage: "50 TB",
       overage: "$9 / 100 GB",
-      users: "Unlimited users",
-      extras: "multi-campus, audit logs, 24h SLA",
+      users: "250 users",
+      extras: "multi-campus, 24h SLA",
       icon: Shield,
       popular: false,
       features: [
         "50 TB included storage",
-        "Unlimited users",
+        "Up to 250 users",
         "Multi-campus support",
-        "Audit logs & compliance",
         "24-hour SLA guarantee",
-        "White-label options",
         "Dedicated account manager"
       ]
     }
