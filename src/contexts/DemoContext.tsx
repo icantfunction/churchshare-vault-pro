@@ -1,4 +1,5 @@
 
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 interface DemoFile {
@@ -191,7 +192,6 @@ export const DemoProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Clear any existing demo files from localStorage to start fresh
     localStorage.removeItem('churchshare-demo-files');
-    console.log('[DEBUG] Cleared stale localStorage data');
   }, []);
 
   // Load demo files from localStorage on mount (after clearing stale data)
@@ -200,7 +200,6 @@ export const DemoProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (savedFiles) {
       try {
         const files = JSON.parse(savedFiles);
-        console.log('[DEBUG] Loaded user files from storage:', files.length);
         setDemoFiles(prev => [...sampleFiles, ...files]);
       } catch (error) {
         console.error('Error loading demo files:', error);
@@ -212,16 +211,12 @@ export const DemoProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const userUploadedFiles = demoFiles.filter(file => !file.id.startsWith('sample-file-'));
     if (userUploadedFiles.length > 0) {
-      console.log('[DEBUG] Saving user files to storage:', userUploadedFiles.length);
       localStorage.setItem('churchshare-demo-files', JSON.stringify(userUploadedFiles));
     }
   }, [demoFiles]);
 
   const addDemoFile = async (file: File, ministry: string, eventDate: string, notes: string) => {
     const currentTotalFiles = getTotalFileCount();
-    
-    console.log('[DEBUG] Current total file count:', currentTotalFiles);
-    console.log('[DEBUG] Attempting to upload to ministry:', ministry);
     
     // Limit to 6 total files in demo mode
     if (currentTotalFiles >= 6) {
@@ -245,7 +240,6 @@ export const DemoProvider: React.FC<{ children: React.ReactNode }> = ({ children
       thumbnail: file.type.startsWith('image/') ? fileUrl : undefined
     };
 
-    console.log('[DEBUG] Adding demo file:', demoFile);
     setDemoFiles(prev => [...prev, demoFile]);
   };
 
@@ -269,9 +263,7 @@ export const DemoProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getDemoFilesByMinistry = (ministryId: string) => {
-    console.log('[DEBUG] Getting files for ministry:', ministryId);
     const filtered = demoFiles.filter(file => file.ministry_id === ministryId);
-    console.log('[DEBUG] Found files:', filtered.length);
     return filtered;
   };
 

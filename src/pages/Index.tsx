@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, Upload, Users } from "lucide-react";
@@ -7,49 +8,27 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
 
 const Index = () => {
-  console.log('[DEBUG-200] Index: Component render started');
-  console.time('[DEBUG-800] Index page render timing');
-  
   const { setDemoMode } = useDemoContext();
-  console.log('[DEBUG-201] Index: Demo context obtained');
-  
   const { user, loading, profileError } = useAuth();
-  console.log('[DEBUG-202] Index: Auth state received', { 
-    hasUser: !!user, 
-    loading,
-    userId: user?.id,
-    profileError
-  });
-  
   const navigate = useNavigate();
-  console.log('[DEBUG-203] Index: Navigate hook obtained');
 
   const handleViewDemo = () => {
-    console.log('[DEBUG-204] Index: View demo clicked');
     setDemoMode(true);
   };
 
   // Redirect authenticated users to dashboard
   useEffect(() => {
-    console.log('[DEBUG-205] Index: Redirect useEffect triggered', { loading, hasUser: !!user });
-    
     if (!loading && user) {
-      console.log('[DEBUG-206] Index: User authenticated, redirecting to dashboard');
-      console.log('[DEBUG-902] Route transition: Index → Dashboard');
       navigate('/dashboard', { replace: true });
     }
   }, [user, loading, navigate]);
 
   // Reset demo mode when leaving the landing page to regular auth flow
   useEffect(() => {
-    console.log('[DEBUG-207] Index: Demo cleanup useEffect setup');
-    
     return () => {
-      console.log('[DEBUG-208] Index: Demo cleanup executing');
       // Don't reset demo mode if navigating to demo pages
       const isDemoPath = window.location.pathname.startsWith('/demo');
       if (!isDemoPath) {
-        console.log('[DEBUG-209] Index: Resetting demo mode');
         setDemoMode(false);
       }
     };
@@ -57,9 +36,6 @@ const Index = () => {
 
   // Show loading spinner while checking authentication
   if (loading) {
-    console.log('[DEBUG-210] Index: Showing loading screen');
-    console.timeEnd('[DEBUG-800] Index page render timing');
-    
     return (
       <div className="min-h-screen bg-background font-poppins flex items-center justify-center p-4">
         <div className="text-center">
@@ -74,10 +50,6 @@ const Index = () => {
       </div>
     );
   }
-
-  console.log('[DEBUG-211] Index: Rendering main content');
-  console.log('[DEBUG-212] Index: Main content JSX executing');
-  console.timeEnd('[DEBUG-800] Index page render timing');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 font-poppins">

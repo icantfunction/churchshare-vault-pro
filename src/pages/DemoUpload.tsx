@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,20 +24,12 @@ const DemoUpload = () => {
   // Get total file count (sample + user uploaded files)
   const currentFileCount = getTotalFileCount();
 
-  console.log('[DEBUG] DemoUpload - currentFileCount:', currentFileCount, 'pending files:', files.length);
-
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     const droppedFiles = Array.from(e.dataTransfer.files);
     
     // Check demo limit - 6 total files maximum
     if (currentFileCount + files.length + droppedFiles.length > 6) {
-      console.log('[DEBUG] Drop rejected - would exceed limit:', {
-        current: currentFileCount,
-        pending: files.length,
-        dropped: droppedFiles.length,
-        total: currentFileCount + files.length + droppedFiles.length
-      });
       toast({
         title: "Demo Limit Reached",
         description: "Demo mode is limited to 6 total files. Sign up for unlimited uploads!",
@@ -45,7 +38,6 @@ const DemoUpload = () => {
       return;
     }
     
-    console.log('[DEBUG] Files dropped successfully:', droppedFiles.length);
     setFiles(prev => [...prev, ...droppedFiles]);
   }, [files.length, currentFileCount, toast]);
 
@@ -55,12 +47,6 @@ const DemoUpload = () => {
       
       // Check demo limit - 6 total files maximum
       if (currentFileCount + files.length + selectedFiles.length > 6) {
-        console.log('[DEBUG] File selection rejected - would exceed limit:', {
-          current: currentFileCount,
-          pending: files.length,
-          selected: selectedFiles.length,
-          total: currentFileCount + files.length + selectedFiles.length
-        });
         toast({
           title: "Demo Limit Reached",
           description: "Demo mode is limited to 6 total files. Sign up for unlimited uploads!",
@@ -69,13 +55,36 @@ const DemoUpload = () => {
         return;
       }
       
-      console.log('[DEBUG] Files selected successfully:', selectedFiles.length);
       setFiles(prev => [...prev, ...selectedFiles]);
     }
   };
 
   const removeFile = (index: number) => {
+    const fileToRemove = files[index];
+    
+    // Revoke blob URL if it was created with URL.createObjectURL
+    if (fileToRemove && typeof fileToRemove === 'object' && 'file_url' in fileToRemove) {
+      const fileUrl = (fileToRemove as any).file_url;
+      if (fileUrl && typeof fileUrl === 'string' && fileUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(fileUrl);
+      }
+    }
+    
     setFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const clearAllFiles = () => {
+    // Revoke all blob URLs before clearing
+    files.forEach(file => {
+      if (file && typeof file === 'object' && 'file_url' in file) {
+        const fileUrl = (file as any).file_url;
+        if (fileUrl && typeof fileUrl === 'string' && fileUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(fileUrl);
+        }
+      }
+    });
+    
+    setFiles([]);
   };
 
   const handleUpload = async () => {
@@ -88,17 +97,10 @@ const DemoUpload = () => {
       return;
     }
 
-    console.log('[DEBUG] Starting demo upload process:', {
-      fileCount: files.length,
-      ministry,
-      currentFileCount
-    });
-
     setUploading(true);
     
     try {
       for (const file of files) {
-        console.log('[DEBUG] Uploading file to demo:', file.name, 'ministry:', ministry);
         await addDemoFile(file, ministry, eventDate, notes);
       }
 
@@ -115,7 +117,6 @@ const DemoUpload = () => {
         navigate('/my-files');
       }, 1500);
     } catch (error) {
-      console.error('[DEBUG] Demo upload error:', error);
       toast({
         title: "Upload Error",
         description: error instanceof Error ? error.message : "An error occurred",
@@ -296,7 +297,7 @@ const DemoUpload = () => {
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => setFiles([])}
+                    onClick={clearAllFiles}
                     disabled={uploading}
                     className="h-12 rounded-xl"
                   >
