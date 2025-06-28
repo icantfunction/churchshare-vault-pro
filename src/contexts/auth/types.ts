@@ -18,5 +18,7 @@ export interface AuthContextType {
   session: Session | null;
   loading: boolean;
   profileError: string | null;
+  profileRetryCount?: number;
   signOut: () => Promise<void>;
+  refreshProfile?: () => void;
 }

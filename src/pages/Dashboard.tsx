@@ -1,8 +1,9 @@
+
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Upload, Users, Settings, FolderOpen, Plus, Menu, X } from "lucide-react";
+import { Upload, Users, Settings, FolderOpen, Plus, Menu, X, RefreshCw } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,11 +18,22 @@ interface Ministry {
 }
 
 const Dashboard = () => {
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, profileError, profileRetryCount, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [ministries, setMinistries] = useState<Ministry[]>([]);
   const [loading, setLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Debug admin panel visibility
+  const canAccessAdmin = ['Admin', 'Director', 'SuperOrg'].includes(profile?.role || '');
+  
+  console.log('[DEBUG-DASHBOARD] Admin panel state:', {
+    profileRole: profile?.role,
+    canAccessAdmin,
+    hasProfile: !!profile,
+    profileError,
+    profileRetryCount
+  });
 
   useEffect(() => {
     if (profile) {
@@ -68,7 +80,12 @@ const Dashboard = () => {
     await signOut();
   };
 
-  const canAccessAdmin = ['Admin', 'Director', 'SuperOrg'].includes(profile?.role || '');
+  const handleRefreshProfile = () => {
+    console.log('[DEBUG-DASHBOARD] Manual profile refresh requested');
+    if (refreshProfile) {
+      refreshProfile();
+    }
+  };
 
   return (
     <ProtectedRoute>
@@ -85,13 +102,32 @@ const Dashboard = () => {
                 <p className="mt-1 text-xs sm:text-sm text-gray-500 truncate">
                   Welcome back, {profile?.first_name} {profile?.last_name}
                 </p>
+                {profileError && (
+                  <p className="text-xs text-red-500 mt-1">
+                    Profile issue: {profileError}
+                    {profileRetryCount && profileRetryCount > 0 && ` (Retry ${profileRetryCount}/3)`}
+                  </p>
+                )}
               </div>
               
               {/* Desktop: Role badge and sign out */}
               <div className="hidden md:flex items-center space-x-4">
-                <Badge variant="secondary" className="px-3 py-1">
-                  {profile?.role}
-                </Badge>
+                {profile?.role ? (
+                  <Badge variant="secondary" className="px-3 py-1">
+                    {profile.role}
+                  </Badge>
+                ) : (
+                  <div className="flex items-center space-x-2">
+                    <Badge variant="outline" className="px-3 py-1">
+                      Loading...
+                    </Badge>
+                    {refreshProfile && (
+                      <Button onClick={handleRefreshProfile} variant="ghost" size="sm">
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                )}
                 <Button onClick={handleSignOut} variant="outline">
                   Sign Out
                 </Button>
@@ -119,9 +155,22 @@ const Dashboard = () => {
               <div className="md:hidden border-t border-gray-200/50 py-4">
                 <div className="flex flex-col space-y-3">
                   <div className="flex items-center justify-between px-3 py-2">
-                    <Badge variant="secondary" className="px-3 py-1">
-                      {profile?.role}
-                    </Badge>
+                    {profile?.role ? (
+                      <Badge variant="secondary" className="px-3 py-1">
+                        {profile.role}
+                      </Badge>
+                    ) : (
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="outline" className="px-3 py-1">
+                          Loading...
+                        </Badge>
+                        {refreshProfile && (
+                          <Button onClick={handleRefreshProfile} variant="ghost" size="sm">
+                            <RefreshCw className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
                     <Button 
                       onClick={() => {
                         handleSignOut();
@@ -181,16 +230,31 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            {canAccessAdmin && (
-              <Card className="shadow-sm border-0 bg-gradient-to-br from-orange-50 to-orange-100 hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/admin')}>
+            {/* Admin Panel Card - Show loading state or conditional rendering */}
+            {profile ? (
+              canAccessAdmin && (
+                <Card className="shadow-sm border-0 bg-gradient-to-br from-orange-50 to-orange-100 hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/admin')}>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base sm:text-lg flex items-center gap-2 text-orange-700">
+                      <Settings className="h-4 w-4 sm:h-5 sm:w-5" />
+                      Admin Panel
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-xs sm:text-sm text-orange-600">Manage ministries and users</p>
+                  </CardContent>
+                </Card>
+              )
+            ) : (
+              <Card className="shadow-sm border-0 bg-gradient-to-br from-gray-50 to-gray-100">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base sm:text-lg flex items-center gap-2 text-orange-700">
+                  <CardTitle className="text-base sm:text-lg flex items-center gap-2 text-gray-500">
                     <Settings className="h-4 w-4 sm:h-5 sm:w-5" />
-                    Admin Panel
+                    Loading...
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-xs sm:text-sm text-orange-600">Manage ministries and users</p>
+                  <p className="text-xs sm:text-sm text-gray-400">Checking permissions</p>
                 </CardContent>
               </Card>
             )}

@@ -18,7 +18,10 @@ export const useAuth = () => {
   console.log('[DEBUG-102] AuthContext: useAuth returning context', { 
     hasUser: !!context.user, 
     loading: context.loading,
-    hasProfile: !!context.profile 
+    hasProfile: !!context.profile,
+    profileRole: context.profile?.role,
+    profileError: context.profileError,
+    profileRetryCount: context.profileRetryCount
   });
   return context;
 };
@@ -29,7 +32,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const authState = useAuthState();
   const { handleAuthStateChange } = authState;
 
-  console.log('[DEBUG-104] AuthProvider: Initial state set', { loading: authState.loading });
+  console.log('[DEBUG-104] AuthProvider: Initial state set', { 
+    loading: authState.loading,
+    hasProfile: !!authState.profile,
+    profileRole: authState.profile?.role
+  });
 
   useEffect(() => {
     console.log('[DEBUG-113] AuthProvider: Main useEffect started');
@@ -97,15 +104,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     session: authState.session,
     loading: authState.loading,
     profileError: authState.profileError,
-    signOut: authState.signOut
+    profileRetryCount: authState.profileRetryCount,
+    signOut: authState.signOut,
+    refreshProfile: authState.refreshProfile
   };
 
   console.log('[DEBUG-131] AuthProvider: Rendering with context value', {
     hasUser: !!authState.user,
     hasProfile: !!authState.profile,
+    profileRole: authState.profile?.role,
     hasSession: !!authState.session,
     loading: authState.loading,
-    profileError: authState.profileError
+    profileError: authState.profileError,
+    profileRetryCount: authState.profileRetryCount
   });
 
   return (
