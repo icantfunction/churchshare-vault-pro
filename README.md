@@ -6,7 +6,7 @@ A secure, simple file sharing platform designed specifically for churches and cr
 ## Features
 
 - **Secure File Sharing**: Role-based permissions ensure only authorized ministry members can access files
-- **High-Quality Uploads**: Upload photos and files without compression - original quality preserved
+- **High-Quality Uploads**: Upload photos and files without compression - original quality preserved  
 - **Ministry Organization**: Organize files by ministry and events for easy discovery
 - **Demo Mode**: Try the platform with sample data before signing up
 
@@ -75,6 +75,14 @@ This project requires Supabase credentials to function properly. You'll need to:
 - `npm run build` - Build for production
 - `npm run lint` - Run ESLint
 - `npm run preview` - Preview production build locally
+- `npm run test` - Run test suite
+
+### Running Tests
+
+Run the Vitest suite with:
+```bash
+npm run test
+```
 
 ### Tech Stack
 
@@ -84,6 +92,7 @@ This project requires Supabase credentials to function properly. You'll need to:
 - **Routing**: React Router
 - **State Management**: React Context API
 - **Icons**: Lucide React
+- **Testing**: Vitest, React Testing Library
 
 ## Project Structure
 
@@ -103,9 +112,10 @@ src/
 2. Create a feature branch: `git checkout -b feature-name`
 3. Make your changes and test thoroughly
 4. Run linting: `npm run lint`
-5. Commit your changes: `git commit -m 'Add feature'`
-6. Push to the branch: `git push origin feature-name`
-7. Submit a pull request
+5. Run tests: `npm run test`
+6. Commit your changes: `git commit -m 'Add feature'`
+7. Push to the branch: `git push origin feature-name`
+8. Submit a pull request
 
 ## License
 
