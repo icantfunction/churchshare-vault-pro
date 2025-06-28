@@ -1,7 +1,7 @@
 
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { SignInForm } from './SignInForm'
+import SignInForm from './SignInForm'
 import { useToast } from '@/hooks/use-toast'
 
 // Mock the toast hook
