@@ -12,12 +12,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { FileText, Image, Video, ArrowLeft, Upload, Sparkles, Search, User, Users, Calendar, Camera, ArrowRight, Folder, Menu, X } from "lucide-react";
 import { useDemoContext } from "@/contexts/DemoContext";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 
 const DemoFiles = () => {
   const { demoFiles, clearDemoFiles, demoMinistries, currentDemoUser } = useDemoContext();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
   // Calculate user-uploaded files (excluding sample files)
   const sampleFileIds = ['demo-file-1', 'demo-file-2', 'demo-file-3', 'demo-file-4'];
@@ -40,6 +41,10 @@ const DemoFiles = () => {
 
   const totalFiles = demoFiles.length;
   const userName = currentDemoUser.first_name;
+
+  const handleHeroBannerClick = () => {
+    navigate("/demo/upload");
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 font-poppins">
@@ -189,7 +194,11 @@ const DemoFiles = () => {
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Hero / Welcome Banner */}
-        <div className="bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 rounded-3xl p-6 sm:p-8 mb-8 text-white shadow-2xl relative overflow-hidden group cursor-pointer hover:shadow-3xl transition-all duration-300" title="Click to open Upload wizard">
+        <div 
+          className="bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 rounded-3xl p-6 sm:p-8 mb-8 text-white shadow-2xl relative overflow-hidden group cursor-pointer hover:shadow-3xl transition-all duration-300" 
+          title="Click to open Upload wizard"
+          onClick={handleHeroBannerClick}
+        >
           <div className="max-w-4xl">
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4">
               Welcome back, {userName}! 👋
