@@ -40,7 +40,8 @@ serve(async (req) => {
     console.log('[DEBUG] Upload request:', {
       fileName: uploadData.fileName,
       ministryId: uploadData.ministryId,
-      userId: user.id
+      userId: user.id,
+      eventDate: uploadData.eventDate
     })
 
     // Validate ministry ID is provided
@@ -60,6 +61,12 @@ serve(async (req) => {
     // For now, return a simple presigned URL (in production, implement multipart upload)
     const presignedUrl = `https://${s3Bucket}.s3.${awsRegion}.amazonaws.com/${fileKey}`
 
+    // Handle empty or invalid event dates
+    let eventDateValue = null;
+    if (uploadData.eventDate && uploadData.eventDate.trim() !== '') {
+      eventDateValue = uploadData.eventDate;
+    }
+
     // Create file record in database with ministry ID
     const { data: fileData, error: fileError } = await supabase
       .from('files')
@@ -71,8 +78,8 @@ serve(async (req) => {
         preview_key: previewKey,
         uploader_id: user.id,
         ministry_id: uploadData.ministryId,
-        event_date: uploadData.eventDate,
-        notes: uploadData.notes,
+        event_date: eventDateValue,
+        notes: uploadData.notes || '',
         needs_reencode: uploadData.fileType.startsWith('video/')
       })
       .select()
