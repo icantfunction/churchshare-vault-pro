@@ -6,12 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Progress } from "@/components/ui/progress";
-import { Upload as UploadIcon, X, FileText, Image, Video, CheckCircle, ArrowLeft } from "lucide-react";
+import { Upload as UploadIcon, X, FileText, Image, Video, ArrowLeft } from "lucide-react";
 import { useState, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useDemoContext } from "@/contexts/DemoContext";
+import { useMinistries } from "@/hooks/useMinistries";
 import { Link } from "react-router-dom";
+import UploadProgress from "@/components/UploadProgress";
 
 interface FormErrors {
   ministry?: string;
@@ -21,13 +22,14 @@ interface FormErrors {
 const Upload = () => {
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [ministry, setMinistry] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [notes, setNotes] = useState("");
   const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [showProgress, setShowProgress] = useState(false);
   const { toast } = useToast();
   const { isDemoMode, addDemoFile, getTotalFileCount } = useDemoContext();
+  const { ministries, isLoading: ministriesLoading } = useMinistries();
 
   const currentFileCount = isDemoMode ? getTotalFileCount() : 0;
 
@@ -54,7 +56,6 @@ const Upload = () => {
     
     console.log('[DEBUG] Files dropped successfully:', droppedFiles.length);
     setFiles(prev => [...prev, ...droppedFiles]);
-    // Clear files error when files are added
     if (formErrors.files) {
       setFormErrors(prev => ({ ...prev, files: undefined }));
     }
@@ -83,7 +84,6 @@ const Upload = () => {
       
       console.log('[DEBUG] Files selected successfully:', selectedFiles.length);
       setFiles(prev => [...prev, ...selectedFiles]);
-      // Clear files error when files are added
       if (formErrors.files) {
         setFormErrors(prev => ({ ...prev, files: undefined }));
       }
@@ -141,28 +141,15 @@ const Upload = () => {
           description: `Successfully added ${files.length} files to demo`,
         });
       } else {
-        // Real mode: simulate multipart upload with progress
-        for (const file of files) {
-          const fileId = file.name;
-          
-          // Simulate 8-part multipart upload progress
-          for (let part = 1; part <= 8; part++) {
-            await new Promise(resolve => setTimeout(resolve, 250));
-            const progress = Math.floor((part / 8) * 100);
-            setUploadProgress(prev => ({ ...prev, [fileId]: progress }));
-          }
-        }
-
-        toast({
-          title: "Upload Complete!",
-          description: `Successfully uploaded ${files.length} files to ${ministry}`,
-        });
+        // Real mode: show upload progress component
+        setShowProgress(true);
       }
 
-      setFiles([]);
-      setUploadProgress({});
-      setUploading(false);
-      setFormErrors({});
+      if (isDemoMode) {
+        setFiles([]);
+        setUploading(false);
+        setFormErrors({});
+      }
     } catch (error) {
       console.error('[DEBUG] Upload error:', error);
       toast({
@@ -176,10 +163,22 @@ const Upload = () => {
 
   const handleMinistryChange = (value: string) => {
     setMinistry(value);
-    // Clear ministry error when user selects a ministry
     if (formErrors.ministry) {
       setFormErrors(prev => ({ ...prev, ministry: undefined }));
     }
+  };
+
+  const handleUploadComplete = (fileIds: string[]) => {
+    console.log('[DEBUG] Upload completed:', fileIds);
+    setFiles([]);
+    setShowProgress(false);
+    setUploading(false);
+    setFormErrors({});
+  };
+
+  const handleRemoveFile = (fileId: string) => {
+    // Remove file from progress view
+    console.log('[DEBUG] Removing file from progress:', fileId);
   };
 
   const getFileIcon = (file: File) => {
@@ -199,6 +198,22 @@ const Upload = () => {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
+
+  // Show upload progress when not in demo mode and uploading
+  if (showProgress && !isDemoMode) {
+    return (
+      <div className="min-h-screen bg-background font-poppins">
+        <Header />
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <UploadProgress 
+            files={files} 
+            onUploadComplete={handleUploadComplete}
+            onRemoveFile={handleRemoveFile}
+          />
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background font-poppins">
@@ -250,15 +265,16 @@ const Upload = () => {
                   <Label htmlFor="ministry" className={formErrors.ministry ? 'text-red-600' : ''}>
                     Ministry *
                   </Label>
-                  <Select value={ministry} onValueChange={handleMinistryChange}>
+                  <Select value={ministry} onValueChange={handleMinistryChange} disabled={ministriesLoading}>
                     <SelectTrigger className={`h-12 rounded-xl ${formErrors.ministry ? 'border-red-500 bg-red-50' : ''}`}>
-                      <SelectValue placeholder="Select ministry" />
+                      <SelectValue placeholder={ministriesLoading ? "Loading ministries..." : "Select ministry"} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="youth">Youth Ministry</SelectItem>
-                      <SelectItem value="worship">Worship Team</SelectItem>
-                      <SelectItem value="children">Children's Ministry</SelectItem>
-                      <SelectItem value="outreach">Outreach Events</SelectItem>
+                      {ministries.map((min) => (
+                        <SelectItem key={min.id} value={min.id}>
+                          {min.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   {formErrors.ministry && (
@@ -349,21 +365,6 @@ const Upload = () => {
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{file.name}</p>
                         <p className="text-sm text-gray-600">{formatFileSize(file.size)}</p>
-                        {uploading && uploadProgress[file.name] !== undefined && (
-                          <div className="mt-2">
-                            <div className="flex justify-between text-xs text-gray-600 mb-1">
-                              <span>Part {Math.ceil((uploadProgress[file.name] / 100) * 8)} of 8</span>
-                              <span>{uploadProgress[file.name]}%</span>
-                            </div>
-                            <Progress value={uploadProgress[file.name]} className="h-2" />
-                          </div>
-                        )}
-                        {uploadProgress[file.name] === 100 && (
-                          <div className="flex items-center mt-2 text-green-600">
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                            <span className="text-sm">Upload complete</span>
-                          </div>
-                        )}
                       </div>
                       {!uploading && (
                         <Button
@@ -382,10 +383,10 @@ const Upload = () => {
                 <div className="mt-6 flex gap-4">
                   <Button
                     onClick={handleUpload}
-                    disabled={uploading}
+                    disabled={uploading || ministriesLoading}
                     className="flex-1 h-12 rounded-xl bg-primary hover:bg-primary/90"
                   >
-                    {uploading ? (isDemoMode ? "Adding to Demo..." : "Uploading...") : (isDemoMode ? "Add to Demo" : "Upload Files")}
+                    {uploading ? (isDemoMode ? "Adding to Demo..." : "Starting Upload...") : (isDemoMode ? "Add to Demo" : "Upload Files")}
                   </Button>
                   <Button
                     variant="outline"

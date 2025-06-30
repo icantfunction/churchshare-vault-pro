@@ -45,24 +45,31 @@ const UploadProgress: React.FC<UploadProgressProps> = ({ files, onUploadComplete
     try {
       updateFileStatus(uploadFile.id, { status: 'uploading', progress: 0 });
 
-      // Step 1: Prepare upload
+      console.log('[DEBUG] Starting upload for:', uploadFile.file.name);
+
+      // Step 1: Prepare upload using Edge Function
       const { data: uploadData, error: prepError } = await supabase.functions.invoke('upload-to-s3', {
         body: {
           fileName: uploadFile.file.name,
           fileSize: uploadFile.file.size,
           fileType: uploadFile.file.type,
-          ministryId: null, // Could be set based on user context
+          ministryId: null, // Will be set by the calling component
           notes: ''
         }
       });
 
-      if (prepError) throw prepError;
+      if (prepError) {
+        console.error('[DEBUG] Upload preparation error:', prepError);
+        throw prepError;
+      }
 
+      console.log('[DEBUG] Upload data received:', uploadData);
       updateFileStatus(uploadFile.id, { progress: 25, fileId: uploadData.fileId });
 
-      // Step 2: Upload to S3 (simulated progress)
+      // Step 2: Upload to S3 using presigned URL
+      // In a real implementation, this would upload the actual file to S3
+      // For now, we'll simulate the upload progress
       const uploadToS3 = async () => {
-        // In a real implementation, this would use AWS SDK with progress tracking
         for (let progress = 25; progress <= 90; progress += 5) {
           await new Promise(resolve => setTimeout(resolve, 100));
           updateFileStatus(uploadFile.id, { progress });
@@ -73,12 +80,13 @@ const UploadProgress: React.FC<UploadProgressProps> = ({ files, onUploadComplete
       updateFileStatus(uploadFile.id, { progress: 90, status: 'processing' });
 
       // Step 3: Complete processing
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate processing time
+      await new Promise(resolve => setTimeout(resolve, 1000));
       updateFileStatus(uploadFile.id, { progress: 100, status: 'completed' });
 
+      console.log('[DEBUG] Upload completed for:', uploadFile.file.name);
       return uploadData.fileId;
     } catch (error) {
-      console.error('Upload error:', error);
+      console.error('[DEBUG] Upload error for', uploadFile.file.name, ':', error);
       updateFileStatus(uploadFile.id, { 
         status: 'error', 
         error: error instanceof Error ? error.message : 'Upload failed' 
