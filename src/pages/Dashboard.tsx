@@ -218,7 +218,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="shadow-sm border-0 bg-gradient-to-br from-purple-50 to-purple-100 hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/demo/files')}>
+            <Card className="shadow-sm border-0 bg-gradient-to-br from-purple-50 to-purple-100 hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/my-files')}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base sm:text-lg flex items-center gap-2 text-purple-700">
                   <Users className="h-4 w-4 sm:h-5 sm:w-5" />

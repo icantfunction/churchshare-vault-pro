@@ -1,3 +1,4 @@
+
 import Header from "@/components/Header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,15 +31,35 @@ import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon } from "lucide-react";
 import { Search, Download, Calendar as CalendarLucide, Filter, Image, FileText, Video, Home } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useDemoContext } from "@/contexts/DemoContext";
 import { useSearchParams, Link } from "react-router-dom";
 import { useSearch } from "@/contexts/SearchContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 
 const ITEMS_PER_PAGE = 12;
 
+interface FileData {
+  id: string;
+  name: string;
+  type: string;
+  ministry: string;
+  ministry_id: string;
+  eventDate: string;
+  uploadedBy: string;
+  size: string;
+  thumbnail?: string;
+  sizeBytes: number;
+}
+
+interface Ministry {
+  id: string;
+  name: string;
+  description: string;
+}
+
 const MyFiles = () => {
-  const { demoFiles, demoMinistries, searchDemoFiles, getTotalFileCount, setDemoMode } = useDemoContext();
+  const { user, profile } = useAuth();
   const { globalSearchTerm } = useSearch();
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
@@ -50,18 +71,14 @@ const MyFiles = () => {
   const [dateTo, setDateTo] = useState<Date>();
   const [minSize, setMinSize] = useState("");
   const [maxSize, setMaxSize] = useState("");
+  const [files, setFiles] = useState<FileData[]>([]);
+  const [ministries, setMinistries] = useState<Ministry[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Get ministry from URL parameter
   const ministryFromUrl = searchParams.get('ministry');
   const searchFromUrl = searchParams.get('search');
-  const selectedMinistry = ministryFromUrl ? demoMinistries.find(m => m.id === ministryFromUrl) : null;
-
-  // Auto-enable demo mode if we have demo files
-  useEffect(() => {
-    if (demoFiles.length > 0) {
-      setDemoMode(true);
-    }
-  }, [demoFiles.length, setDemoMode]);
+  const selectedMinistry = ministryFromUrl ? ministries.find(m => m.id === ministryFromUrl) : null;
 
   // Set filters from URL parameters and global search
   useEffect(() => {
@@ -75,73 +92,77 @@ const MyFiles = () => {
     }
   }, [ministryFromUrl, searchFromUrl, globalSearchTerm]);
 
-  const isDemoMode = demoFiles.length > 0;
+  // Fetch ministries and files for authenticated users
+  useEffect(() => {
+    if (user && profile) {
+      fetchMinistries();
+      fetchFiles();
+    }
+  }, [user, profile]);
 
-  // Sample files for non-demo mode
-  const sampleFiles = [
-    {
-      id: 1,
-      name: "Youth_Camp_2024_Group_Photo.jpg",
-      type: "image",
-      ministry: "Youth Ministry",
-      ministry_id: "youth",
-      eventDate: "2024-03-15",
-      uploadedBy: "Sarah Johnson",
-      size: "4.2 MB",
-      thumbnail: "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b",
-    },
-    {
-      id: 2,
-      name: "Sunday_Worship_Recording.mp4", 
-      type: "video",
-      ministry: "Worship Team",
-      ministry_id: "worship",
-      eventDate: "2024-03-10",
-      uploadedBy: "Mike Wilson",
-      size: "125 MB",
-      thumbnail: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158",
-    },
-    {
-      id: 3,
-      name: "Childrens_Easter_Program.pdf",
-      type: "document", 
-      ministry: "Children's Ministry",
-      ministry_id: "children",
-      eventDate: "2024-03-08",
-      uploadedBy: "Lisa Chen",
-      size: "2.1 MB",
-      thumbnail: "https://images.unsplash.com/photo-1487058792275-0ad4aaf24ca7",
-    },
-    {
-      id: 4,
-      name: "Community_Outreach_Photos.zip",
-      type: "archive",
-      ministry: "Outreach Events", 
-      ministry_id: "outreach",
-      eventDate: "2024-03-05",
-      uploadedBy: "David Martinez",
-      size: "45 MB",
-      thumbnail: "https://images.unsplash.com/photo-1506744038136-46273834b3fb",
-    },
-  ];
+  const fetchMinistries = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('ministries')
+        .select('id, name, description')
+        .order('name');
 
-  // Transform demo files to match expected format
-  const transformedDemoFiles = isDemoMode ? demoFiles.map(file => {
-    const ministry = demoMinistries.find(m => m.id === file.ministry_id);
-    return {
-      id: file.id,
-      name: file.file_name,
-      type: file.file_type.startsWith('image/') ? 'image' : 
-            file.file_type.startsWith('video/') ? 'video' : 'document',
-      ministry: ministry?.name || `Unknown (${file.ministry_id})`,
-      eventDate: file.event_date,
-      uploadedBy: file.uploaded_by,
-      size: formatFileSize(file.file_size),
-      thumbnail: file.thumbnail || file.file_url,
-      ministry_id: file.ministry_id,
-      sizeBytes: file.file_size,
-    };
-  }) : sampleFiles.map(file => ({ ...file, sizeBytes: parseSizeToBytes(file.size) }));
+      if (error) throw error;
+      setMinistries(data || []);
+    } catch (error) {
+      console.error('Error fetching ministries:', error);
+    }
+  };
+
+  const fetchFiles = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch files with ministry information
+      const { data: filesData, error } = await supabase
+        .from('files')
+        .select(`
+          id,
+          file_name,
+          file_type,
+          file_size,
+          file_url,
+          event_date,
+          uploader_id,
+          ministry_id,
+          ministries!inner(name)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Transform the data to match our FileData interface
+      const transformedFiles: FileData[] = (filesData || []).map(file => ({
+        id: file.id,
+        name: file.file_name || 'Untitled',
+        type: getFileType(file.file_type || ''),
+        ministry: file.ministries?.name || 'Unknown Ministry',
+        ministry_id: file.ministry_id || '',
+        eventDate: file.event_date || new Date().toISOString().split('T')[0],
+        uploadedBy: 'User', // We'll need to enhance this with actual user names
+        size: formatFileSize(file.file_size || 0),
+        thumbnail: file.file_url,
+        sizeBytes: file.file_size || 0,
+      }));
+
+      setFiles(transformedFiles);
+    } catch (error) {
+      console.error('Error fetching files:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getFileType = (mimeType: string): string => {
+    if (mimeType.startsWith('image/')) return 'image';
+    if (mimeType.startsWith('video/')) return 'video';
+    return 'document';
+  };
 
   function formatFileSize(bytes: number) {
     if (bytes === 0) return '0 Bytes';
@@ -168,7 +189,7 @@ const MyFiles = () => {
   }
 
   // Advanced filtering logic
-  const filteredFiles = transformedDemoFiles.filter(file => {
+  const filteredFiles = files.filter(file => {
     const matchesSearch = !searchTerm || 
       file.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       file.uploadedBy.toLowerCase().includes(searchTerm.toLowerCase());
@@ -221,7 +242,6 @@ const MyFiles = () => {
     setSearchParams({});
   };
 
-  // ... keep existing code (getTypeIcon, getTypeBadgeColor functions)
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'image':
@@ -246,7 +266,17 @@ const MyFiles = () => {
     }
   };
 
-  const totalFileCount = isDemoMode ? getTotalFileCount() : 0;
+  // If user is not authenticated, show loading or redirect
+  if (!user || !profile) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading your files...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background font-poppins">
@@ -260,7 +290,7 @@ const MyFiles = () => {
               <BreadcrumbList>
                 <BreadcrumbItem>
                   <BreadcrumbLink asChild>
-                    <Link to="/demo/files">
+                    <Link to="/dashboard">
                       <Home className="h-4 w-4" />
                     </Link>
                   </BreadcrumbLink>
@@ -289,7 +319,6 @@ const MyFiles = () => {
               ? `Files from ${selectedMinistry.name}`
               : "All files you have access to across ministries"
             }
-            {isDemoMode && ` (Demo Mode - ${totalFileCount}/6 total files)`}
           </p>
           {selectedMinistry && (
             <Button asChild variant="outline" className="mt-2">
@@ -330,10 +359,11 @@ const MyFiles = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Ministries</SelectItem>
-                  <SelectItem value="youth">Youth Ministry</SelectItem>
-                  <SelectItem value="worship">Worship Team</SelectItem>
-                  <SelectItem value="children">Children's Ministry</SelectItem>
-                  <SelectItem value="outreach">Outreach Events</SelectItem>
+                  {ministries.map((ministry) => (
+                    <SelectItem key={ministry.id} value={ministry.id}>
+                      {ministry.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
 
@@ -419,7 +449,6 @@ const MyFiles = () => {
         <div className="mb-6 flex justify-between items-center">
           <p className="text-gray-600">
             Showing {paginatedFiles.length} of {filteredFiles.length} files
-            {isDemoMode && ` (${totalFileCount}/6 total files)`}
           </p>
           {filteredFiles.length > 0 && (
             <p className="text-sm text-gray-500">
@@ -428,70 +457,88 @@ const MyFiles = () => {
           )}
         </div>
 
+        {/* Loading State */}
+        {loading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="animate-pulse bg-gray-200 h-64 rounded-lg"></div>
+            ))}
+          </div>
+        )}
+
         {/* File Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {paginatedFiles.map((file) => (
-            <Card key={file.id} className="bg-white shadow-lg border-0 hover:shadow-xl transition-all duration-200 cursor-pointer group">
-              <CardContent className="p-0">
-                <div className="aspect-video bg-gray-100 rounded-t-lg overflow-hidden relative">
-                  <img
-                    src={file.thumbnail}
-                    alt={file.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                  />
-                  <div className="absolute top-3 right-3">
-                    <Badge className={`${getTypeBadgeColor(file.type)} border-0`}>
-                      {getTypeIcon(file.type)}
-                      <span className="ml-1 capitalize">{file.type}</span>
-                    </Badge>
-                  </div>
-                </div>
-                
-                <div className="p-4">
-                  <h3 className="font-semibold text-sm mb-2 truncate" title={file.name}>
-                    {file.name}
-                  </h3>
-                  
-                  <div className="space-y-2 text-xs text-gray-600">
-                    <div className="flex items-center justify-between">
-                      <span className="text-primary font-medium">{file.ministry}</span>
-                      <span>{file.size}</span>
-                    </div>
-                    
-                    <div className="flex items-center">
-                      <CalendarLucide className="h-3 w-3 mr-1" />
-                      <span>{new Date(file.eventDate).toLocaleDateString()}</span>
-                    </div>
-                    
-                    <div className="text-gray-500">
-                      By {file.uploadedBy}
+        {!loading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {paginatedFiles.map((file) => (
+              <Card key={file.id} className="bg-white shadow-lg border-0 hover:shadow-xl transition-all duration-200 cursor-pointer group">
+                <CardContent className="p-0">
+                  <div className="aspect-video bg-gray-100 rounded-t-lg overflow-hidden relative">
+                    {file.thumbnail ? (
+                      <img
+                        src={file.thumbnail}
+                        alt={file.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                        {getTypeIcon(file.type)}
+                      </div>
+                    )}
+                    <div className="absolute top-3 right-3">
+                      <Badge className={`${getTypeBadgeColor(file.type)} border-0`}>
+                        {getTypeIcon(file.type)}
+                        <span className="ml-1 capitalize">{file.type}</span>
+                      </Badge>
                     </div>
                   </div>
                   
-                  <div className="mt-4 flex gap-2">
-                    <Button size="sm" variant="outline" className="flex-1 h-8 text-xs rounded-lg">
-                      Preview
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      className="h-8 px-3 rounded-lg bg-primary hover:bg-primary/90"
-                      onClick={() => {
-                        if (isDemoMode) {
-                          alert('Demo mode: File download simulated');
-                        }
-                      }}
-                    >
-                      <Download className="h-3 w-3" />
-                    </Button>
+                  <div className="p-4">
+                    <h3 className="font-semibold text-sm mb-2 truncate" title={file.name}>
+                      {file.name}
+                    </h3>
+                    
+                    <div className="space-y-2 text-xs text-gray-600">
+                      <div className="flex items-center justify-between">
+                        <span className="text-primary font-medium">{file.ministry}</span>
+                        <span>{file.size}</span>
+                      </div>
+                      
+                      <div className="flex items-center">
+                        <CalendarLucide className="h-3 w-3 mr-1" />
+                        <span>{new Date(file.eventDate).toLocaleDateString()}</span>
+                      </div>
+                      
+                      <div className="text-gray-500">
+                        By {file.uploadedBy}
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 flex gap-2">
+                      <Button size="sm" variant="outline" className="flex-1 h-8 text-xs rounded-lg">
+                        Preview
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        className="h-8 px-3 rounded-lg bg-primary hover:bg-primary/90"
+                        onClick={() => {
+                          // Handle download
+                          if (file.thumbnail) {
+                            window.open(file.thumbnail, '_blank');
+                          }
+                        }}
+                      >
+                        <Download className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
 
         {/* Empty State */}
-        {filteredFiles.length === 0 && (
+        {!loading && filteredFiles.length === 0 && (
           <Card className="shadow-lg border-0">
             <CardContent className="p-12 text-center">
               <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
