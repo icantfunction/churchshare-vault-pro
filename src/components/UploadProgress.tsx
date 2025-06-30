@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -19,11 +18,21 @@ interface UploadFile {
 
 interface UploadProgressProps {
   files: File[];
+  ministryId: string;
+  eventDate?: string;
+  notes?: string;
   onUploadComplete: (fileIds: string[]) => void;
   onRemoveFile: (fileId: string) => void;
 }
 
-const UploadProgress: React.FC<UploadProgressProps> = ({ files, onUploadComplete, onRemoveFile }) => {
+const UploadProgress: React.FC<UploadProgressProps> = ({ 
+  files, 
+  ministryId, 
+  eventDate, 
+  notes, 
+  onUploadComplete, 
+  onRemoveFile 
+}) => {
   const [uploadFiles, setUploadFiles] = useState<UploadFile[]>([]);
   const { toast } = useToast();
 
@@ -45,16 +54,17 @@ const UploadProgress: React.FC<UploadProgressProps> = ({ files, onUploadComplete
     try {
       updateFileStatus(uploadFile.id, { status: 'uploading', progress: 0 });
 
-      console.log('[DEBUG] Starting upload for:', uploadFile.file.name);
+      console.log('[DEBUG] Starting upload for:', uploadFile.file.name, 'ministry:', ministryId);
 
-      // Step 1: Prepare upload using Edge Function
+      // Step 1: Prepare upload using Edge Function with ministry ID
       const { data: uploadData, error: prepError } = await supabase.functions.invoke('upload-to-s3', {
         body: {
           fileName: uploadFile.file.name,
           fileSize: uploadFile.file.size,
           fileType: uploadFile.file.type,
-          ministryId: null, // Will be set by the calling component
-          notes: ''
+          ministryId: ministryId,
+          eventDate: eventDate,
+          notes: notes
         }
       });
 
@@ -96,6 +106,15 @@ const UploadProgress: React.FC<UploadProgressProps> = ({ files, onUploadComplete
   };
 
   const startUploads = useCallback(async () => {
+    if (!ministryId) {
+      toast({
+        title: "Ministry Required",
+        description: "Please select a ministry before uploading files",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const newUploadFiles = files.map(file => ({
       id: crypto.randomUUID(),
       file,
@@ -117,7 +136,7 @@ const UploadProgress: React.FC<UploadProgressProps> = ({ files, onUploadComplete
         description: `${successfulUploads.length} file(s) uploaded successfully`,
       });
     }
-  }, [files, onUploadComplete, toast]);
+  }, [files, ministryId, eventDate, notes, onUploadComplete, toast]);
 
   React.useEffect(() => {
     if (files.length > 0 && uploadFiles.length === 0) {

@@ -1,4 +1,3 @@
-
 import Header from "@/components/Header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -125,7 +124,7 @@ const MyFiles = () => {
       setLoading(true);
       console.log('[DEBUG-MYFILES] Fetching files for user:', user?.id);
       
-      // Fetch files with ministry information
+      // Fetch files with ministry information using LEFT JOIN to include orphaned files
       const { data: filesData, error } = await supabase
         .from('files')
         .select(`
@@ -139,7 +138,7 @@ const MyFiles = () => {
           ministry_id,
           notes,
           created_at,
-          ministries!inner(name)
+          ministries(name)
         `)
         .order('created_at', { ascending: false });
 
@@ -152,9 +151,7 @@ const MyFiles = () => {
 
       // Transform the data to match our FileData interface
       const transformedFiles: FileData[] = (filesData || []).map(file => {
-        const ministryName = file.ministries && Array.isArray(file.ministries) 
-          ? file.ministries[0]?.name || 'Unknown Ministry'
-          : (file.ministries as any)?.name || 'Unknown Ministry';
+        const ministryName = file.ministries?.name || 'Unassigned Ministry';
           
         return {
           id: file.id,

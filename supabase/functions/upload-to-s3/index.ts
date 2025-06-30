@@ -11,7 +11,7 @@ interface UploadRequest {
   fileName: string;
   fileSize: number;
   fileType: string;
-  ministryId?: string;
+  ministryId: string;
   eventDate?: string;
   notes?: string;
 }
@@ -37,6 +37,17 @@ serve(async (req) => {
 
     const uploadData: UploadRequest = await req.json()
 
+    console.log('[DEBUG] Upload request:', {
+      fileName: uploadData.fileName,
+      ministryId: uploadData.ministryId,
+      userId: user.id
+    })
+
+    // Validate ministry ID is provided
+    if (!uploadData.ministryId) {
+      return new Response('Ministry ID is required', { status: 400, headers: corsHeaders })
+    }
+
     // Generate unique file key
     const timestamp = Date.now()
     const fileKey = `${user.id}/${timestamp}-${uploadData.fileName}`
@@ -49,7 +60,7 @@ serve(async (req) => {
     // For now, return a simple presigned URL (in production, implement multipart upload)
     const presignedUrl = `https://${s3Bucket}.s3.${awsRegion}.amazonaws.com/${fileKey}`
 
-    // Create file record in database
+    // Create file record in database with ministry ID
     const { data: fileData, error: fileError } = await supabase
       .from('files')
       .insert({
@@ -71,6 +82,8 @@ serve(async (req) => {
       console.error('File record creation error:', fileError)
       return new Response('Failed to create file record', { status: 500, headers: corsHeaders })
     }
+
+    console.log('[DEBUG] File record created successfully:', fileData.id)
 
     // Trigger MediaConvert processing for video files
     if (uploadData.fileType.startsWith('video/')) {
