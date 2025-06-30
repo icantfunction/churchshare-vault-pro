@@ -43,6 +43,7 @@ const Dashboard = () => {
 
   const fetchMinistries = async () => {
     try {
+      console.log('[DEBUG-DASHBOARD] Fetching ministries and file counts');
       const { data, error } = await supabase
         .from('ministries')
         .select(`
@@ -54,18 +55,27 @@ const Dashboard = () => {
 
       if (error) throw error;
 
+      console.log('[DEBUG-DASHBOARD] Raw ministries data:', data);
+
       // Get file counts for each ministry
       const ministriesWithCounts = await Promise.all(
         (data || []).map(async (ministry) => {
-          const { count } = await supabase
+          console.log('[DEBUG-DASHBOARD] Getting file count for ministry:', ministry.name, ministry.id);
+          const { count, error: countError } = await supabase
             .from('files')
             .select('*', { count: 'exact', head: true })
             .eq('ministry_id', ministry.id);
           
+          if (countError) {
+            console.error('[DEBUG-DASHBOARD] Error getting file count for ministry:', ministry.id, countError);
+          }
+          
+          console.log('[DEBUG-DASHBOARD] File count for', ministry.name, ':', count);
           return { ...ministry, file_count: count || 0 };
         })
       );
 
+      console.log('[DEBUG-DASHBOARD] Final ministries with counts:', ministriesWithCounts);
       setMinistries(ministriesWithCounts);
     } catch (error) {
       console.error('Error fetching ministries:', error);
@@ -291,7 +301,7 @@ const Dashboard = () => {
                     <Card 
                       key={ministry.id} 
                       className="hover:shadow-md transition-shadow cursor-pointer border-gray-200"
-                      onClick={() => navigate(`/ministry/${ministry.id}`)}
+                      onClick={() => navigate(`/my-files?ministry=${ministry.id}`)}
                     >
                       <CardHeader className="pb-3">
                         <CardTitle className="text-base sm:text-lg text-gray-800">{ministry.name}</CardTitle>

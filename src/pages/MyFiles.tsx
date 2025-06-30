@@ -102,12 +102,18 @@ const MyFiles = () => {
 
   const fetchMinistries = async () => {
     try {
+      console.log('[DEBUG-MYFILES] Fetching ministries for user:', user?.id);
       const { data, error } = await supabase
         .from('ministries')
         .select('id, name, description')
         .order('name');
 
-      if (error) throw error;
+      if (error) {
+        console.error('[DEBUG-MYFILES] Error fetching ministries:', error);
+        throw error;
+      }
+      
+      console.log('[DEBUG-MYFILES] Fetched ministries:', data);
       setMinistries(data || []);
     } catch (error) {
       console.error('Error fetching ministries:', error);
@@ -117,6 +123,7 @@ const MyFiles = () => {
   const fetchFiles = async () => {
     try {
       setLoading(true);
+      console.log('[DEBUG-MYFILES] Fetching files for user:', user?.id);
       
       // Fetch files with ministry information
       const { data: filesData, error } = await supabase
@@ -130,26 +137,40 @@ const MyFiles = () => {
           event_date,
           uploader_id,
           ministry_id,
+          notes,
+          created_at,
           ministries!inner(name)
         `)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[DEBUG-MYFILES] Error fetching files:', error);
+        throw error;
+      }
+
+      console.log('[DEBUG-MYFILES] Raw files data:', filesData);
 
       // Transform the data to match our FileData interface
-      const transformedFiles: FileData[] = (filesData || []).map(file => ({
-        id: file.id,
-        name: file.file_name || 'Untitled',
-        type: getFileType(file.file_type || ''),
-        ministry: file.ministries?.name || 'Unknown Ministry',
-        ministry_id: file.ministry_id || '',
-        eventDate: file.event_date || new Date().toISOString().split('T')[0],
-        uploadedBy: 'User', // We'll need to enhance this with actual user names
-        size: formatFileSize(file.file_size || 0),
-        thumbnail: file.file_url,
-        sizeBytes: file.file_size || 0,
-      }));
+      const transformedFiles: FileData[] = (filesData || []).map(file => {
+        const ministryName = file.ministries && Array.isArray(file.ministries) 
+          ? file.ministries[0]?.name || 'Unknown Ministry'
+          : (file.ministries as any)?.name || 'Unknown Ministry';
+          
+        return {
+          id: file.id,
+          name: file.file_name || 'Untitled',
+          type: getFileType(file.file_type || ''),
+          ministry: ministryName,
+          ministry_id: file.ministry_id || '',
+          eventDate: file.event_date || new Date().toISOString().split('T')[0],
+          uploadedBy: 'User', // We'll need to enhance this with actual user names
+          size: formatFileSize(file.file_size || 0),
+          thumbnail: file.file_url,
+          sizeBytes: file.file_size || 0,
+        };
+      });
 
+      console.log('[DEBUG-MYFILES] Transformed files:', transformedFiles);
       setFiles(transformedFiles);
     } catch (error) {
       console.error('Error fetching files:', error);
