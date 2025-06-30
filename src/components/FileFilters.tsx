@@ -12,7 +12,7 @@ import { format } from "date-fns";
 interface Ministry {
   id: string;
   name: string;
-  description: string;
+  description?: string;
 }
 
 interface FileFiltersProps {
