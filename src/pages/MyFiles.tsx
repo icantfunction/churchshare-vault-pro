@@ -1,4 +1,3 @@
-
 import Header from "@/components/Header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +9,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator
 } from "@/components/ui/breadcrumb";
-import { FileText, Home } from "lucide-react";
+import { FileText, Home, Bug } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { useSearch } from "@/contexts/SearchContext";
@@ -18,6 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useFiles } from "@/hooks/useFiles";
 import { useFileFilters } from "@/hooks/useFileFilters";
 import { useMinistries } from "@/hooks/useMinistries";
+import { useDebugFiles } from "@/hooks/useDebugFiles";
 import FileFilters from "@/components/FileFilters";
 import FileGrid from "@/components/FileGrid";
 import FilePagination from "@/components/FilePagination";
@@ -29,9 +29,12 @@ const MyFiles = () => {
   const { globalSearchTerm } = useSearch();
   const [searchParams, setSearchParams] = useSearchParams();
   const [currentPage, setCurrentPage] = useState(1);
+  const [showDebug, setShowDebug] = useState(false);
   
   const { files, loading } = useFiles();
   const { ministries } = useMinistries();
+  const { debugInfo, loading: debugLoading, runDebugQuery } = useDebugFiles();
+  
   const {
     searchTerm, setSearchTerm,
     filterType, setFilterType,
@@ -95,6 +98,45 @@ const MyFiles = () => {
       <Header />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Debug Section - Only show for Directors/Admins */}
+        {(profile?.role === 'Director' || profile?.role === 'Admin' || profile?.role === 'SuperOrg') && (
+          <Card className="mb-6 border-yellow-200 bg-yellow-50">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Bug className="h-4 w-4 text-yellow-600" />
+                  <span className="text-sm font-medium text-yellow-800">Debug Mode</span>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={runDebugQuery}
+                    disabled={debugLoading}
+                  >
+                    {debugLoading ? 'Running...' : 'Run Debug'}
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => setShowDebug(!showDebug)}
+                  >
+                    {showDebug ? 'Hide' : 'Show'} Debug Info
+                  </Button>
+                </div>
+              </div>
+              
+              {showDebug && debugInfo && (
+                <div className="mt-4 p-3 bg-white rounded border text-xs font-mono">
+                  <pre className="whitespace-pre-wrap overflow-auto max-h-64">
+                    {JSON.stringify(debugInfo, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Breadcrumb Navigation */}
         {selectedMinistry && (
           <div className="mb-6">
@@ -137,6 +179,11 @@ const MyFiles = () => {
               <Link to="/my-files">View All Files</Link>
             </Button>
           )}
+          
+          {/* Show file count and user info for debugging */}
+          <div className="mt-2 text-sm text-gray-500">
+            Files found: {files.length} | Role: {profile?.role} | Ministry: {profile?.ministry_id || 'None'}
+          </div>
         </div>
 
         {/* Filters */}
@@ -187,6 +234,9 @@ const MyFiles = () => {
                   ? `No files found in ${selectedMinistry.name} matching your search criteria.`
                   : "No files match your current search and filter criteria."
                 }
+              </p>
+              <p className="text-sm text-gray-500 mb-4">
+                Raw file count: {files.length} files returned from database
               </p>
               <Button onClick={handleClearAllFilters} variant="outline">
                 Clear Filters

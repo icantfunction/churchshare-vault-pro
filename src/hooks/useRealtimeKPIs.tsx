@@ -18,32 +18,27 @@ export const useRealtimeKPIs = () => {
     loading: true,
   });
   
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
 
   const fetchKPIs = async () => {
-    if (!profile) return;
+    if (!profile || !user) return;
 
     try {
-      const isAdmin = profile.role === 'Admin' || profile.role === 'Director' || profile.role === 'SuperOrg';
+      console.log('[DEBUG-KPI] Fetching KPIs for user:', user.id, 'role:', profile.role);
       
-      // Base query for files
-      let filesQuery = supabase
+      // Use the same query logic as useFiles to ensure consistency
+      const { data: files, error } = await supabase
         .from('files')
-        .select('file_size, created_at, uploader_id');
-
-      // If not admin, filter by user's files only
-      if (!isAdmin) {
-        filesQuery = filesQuery.eq('uploader_id', profile.id);
-      }
-
-      const { data: files, error } = await filesQuery;
+        .select('file_size, created_at, uploader_id, ministry_id');
 
       if (error) {
-        console.error('Error fetching KPI data:', error);
+        console.error('[DEBUG-KPI] Error fetching KPI data:', error);
         return;
       }
 
-      // Calculate totals
+      console.log('[DEBUG-KPI] Files for KPI calculation:', files?.length || 0);
+
+      // Calculate totals based on the files the user can actually see
       const totalFiles = files?.length || 0;
       const totalSize = files?.reduce((sum, file) => sum + (file.file_size || 0), 0) || 0;
       
@@ -55,6 +50,8 @@ export const useRealtimeKPIs = () => {
         new Date(file.created_at) > oneWeekAgo
       ).length || 0;
 
+      console.log('[DEBUG-KPI] Calculated KPIs:', { totalFiles, totalSize, recentFiles });
+
       setKpiData({
         totalFiles,
         totalSize,
@@ -62,7 +59,7 @@ export const useRealtimeKPIs = () => {
         loading: false,
       });
     } catch (error) {
-      console.error('Error in fetchKPIs:', error);
+      console.error('[DEBUG-KPI] Error in fetchKPIs:', error);
       setKpiData(prev => ({ ...prev, loading: false }));
     }
   };
@@ -73,14 +70,14 @@ export const useRealtimeKPIs = () => {
   };
 
   useEffect(() => {
-    if (profile) {
+    if (profile && user) {
       fetchKPIs();
     }
-  }, [profile]);
+  }, [profile, user]);
 
   // Set up real-time subscription
   useEffect(() => {
-    if (!profile) return;
+    if (!profile || !user) return;
 
     const channel = supabase
       .channel('kpi-changes')
@@ -92,6 +89,7 @@ export const useRealtimeKPIs = () => {
           table: 'files'
         },
         () => {
+          console.log('[DEBUG-KPI] Real-time update triggered');
           fetchKPIs();
         }
       )
@@ -100,7 +98,7 @@ export const useRealtimeKPIs = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [profile]);
+  }, [profile, user]);
 
   return { kpiData, refreshKPIs };
 };

@@ -50,7 +50,11 @@ export const useFiles = () => {
   const fetchFiles = async () => {
     try {
       setLoading(true);
-      console.log('[DEBUG-MYFILES] Fetching files for user:', user?.id);
+      console.log('[DEBUG-MYFILES] Fetching files for user:', user?.id, 'role:', profile?.role);
+      
+      // Test current_user_role function first
+      const { data: roleData, error: roleError } = await supabase.rpc('current_user_role');
+      console.log('[DEBUG-MYFILES] current_user_role():', roleData, roleError);
       
       const { data: filesData, error } = await supabase
         .from('files')
@@ -76,6 +80,22 @@ export const useFiles = () => {
       }
 
       console.log('[DEBUG-MYFILES] Raw files data:', filesData);
+      console.log('[DEBUG-MYFILES] Files count:', filesData?.length || 0);
+
+      // Log each file's visibility criteria
+      if (filesData) {
+        filesData.forEach((file, index) => {
+          console.log(`[DEBUG-MYFILES] File ${index + 1}:`, {
+            id: file.id,
+            name: file.file_name,
+            ministry_id: file.ministry_id,
+            uploader_id: file.uploader_id,
+            user_ministry: profile?.ministry_id,
+            is_uploader: file.uploader_id === user?.id,
+            user_role: profile?.role
+          });
+        });
+      }
 
       const transformedFiles: FileData[] = (filesData || []).map(file => {
         const ministryName = (file.ministries && file.ministries.length > 0) 
@@ -98,9 +118,11 @@ export const useFiles = () => {
       });
 
       console.log('[DEBUG-MYFILES] Transformed files:', transformedFiles);
+      console.log('[DEBUG-MYFILES] Final count:', transformedFiles.length);
       setFiles(transformedFiles);
     } catch (error) {
-      console.error('Error fetching files:', error);
+      console.error('[DEBUG-MYFILES] Error in fetchFiles:', error);
+      setFiles([]);
     } finally {
       setLoading(false);
     }
@@ -108,7 +130,11 @@ export const useFiles = () => {
 
   useEffect(() => {
     if (user && profile) {
+      console.log('[DEBUG-MYFILES] Starting fetchFiles...');
       fetchFiles();
+    } else {
+      console.log('[DEBUG-MYFILES] No user or profile, skipping fetch');
+      setLoading(false);
     }
   }, [user, profile]);
 
