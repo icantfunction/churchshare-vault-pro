@@ -13,6 +13,7 @@ export interface FileData {
   uploadedBy: string;
   size: string;
   thumbnail?: string;
+  downloadUrl?: string;
   sizeBytes: number;
 }
 
@@ -35,6 +36,20 @@ export const useFiles = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 
+  const generateFileUrl = (fileUrl: string, isPreview: boolean = false) => {
+    if (!fileUrl) return undefined;
+    
+    // If it's already a full URL, return as is
+    if (fileUrl.startsWith('http')) return fileUrl;
+    
+    // Generate the appropriate S3 URL based on the file key
+    const baseUrl = isPreview 
+      ? `https://${process.env.S3_BUCKET_PREVIEWS || 'churchshare-previews'}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com`
+      : `https://${process.env.S3_BUCKET_ORIGINALS || 'churchshare-originals'}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com`;
+    
+    return `${baseUrl}/${fileUrl}`;
+  };
+
   const fetchFiles = async () => {
     try {
       setLoading(true);
@@ -48,6 +63,7 @@ export const useFiles = () => {
           file_type,
           file_size,
           file_url,
+          preview_key,
           event_date,
           uploader_id,
           ministry_id,
@@ -78,7 +94,8 @@ export const useFiles = () => {
           eventDate: file.event_date || new Date().toISOString().split('T')[0],
           uploadedBy: 'User',
           size: formatFileSize(file.file_size || 0),
-          thumbnail: file.file_url,
+          thumbnail: generateFileUrl(file.preview_key || file.file_url, true),
+          downloadUrl: generateFileUrl(file.file_url, false),
           sizeBytes: file.file_size || 0,
         };
       });
