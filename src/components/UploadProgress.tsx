@@ -41,7 +41,7 @@ const UploadProgress: React.FC<UploadProgressProps> = ({ files, onUploadComplete
     ));
   };
 
-  const uploadFile = async (uploadFile: UploadFile) => {
+  const uploadSingleFile = async (uploadFile: UploadFile) => {
     try {
       updateFileStatus(uploadFile.id, { status: 'uploading', progress: 0 });
 
@@ -97,7 +97,7 @@ const UploadProgress: React.FC<UploadProgressProps> = ({ files, onUploadComplete
 
     setUploadFiles(newUploadFiles);
 
-    const uploadPromises = newUploadFiles.map(uploadFile => uploadFile(uploadFile));
+    const uploadPromises = newUploadFiles.map(uploadFile => uploadSingleFile(uploadFile));
     const results = await Promise.all(uploadPromises);
     
     const successfulUploads = results.filter(Boolean) as string[];

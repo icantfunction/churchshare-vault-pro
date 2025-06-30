@@ -86,7 +86,7 @@ export const useFileSharing = () => {
         shareUrl: `${window.location.origin}/share/${share.secret}`,
         secret: share.secret,
         expiresAt: share.expires_at,
-        fileName: share.files?.file_name || 'Unknown',
+        fileName: share.files?.[0]?.file_name || 'Unknown',
         createdAt: share.created_at
       }));
 

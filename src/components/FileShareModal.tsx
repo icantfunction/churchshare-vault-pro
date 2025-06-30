@@ -80,6 +80,10 @@ const FileShareModal: React.FC<FileShareModalProps> = ({ fileId, fileName, child
     }
   };
 
+  const handleExpirationChange = (value: string) => {
+    setExpiresIn(value as '30min' | '24h' | '7days' | 'never');
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
@@ -106,7 +110,7 @@ const FileShareModal: React.FC<FileShareModalProps> = ({ fileId, fileName, child
 
           <div className="space-y-2">
             <Label htmlFor="expiration">Link Expiration</Label>
-            <Select value={expiresIn} onValueChange={setExpiresIn}>
+            <Select value={expiresIn} onValueChange={handleExpirationChange}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
