@@ -6,6 +6,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Download, Calendar as CalendarLucide, Image, Video, FileText, Eye } from "lucide-react";
 import { FileData } from "@/hooks/useFiles";
 import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface FileGridProps {
   files: FileData[];
@@ -14,6 +16,8 @@ interface FileGridProps {
 
 const FileGrid = ({ files, loading }: FileGridProps) => {
   const [previewFile, setPreviewFile] = useState<FileData | null>(null);
+  const [downloadingFiles, setDownloadingFiles] = useState<Set<string>>(new Set());
+  const { toast } = useToast();
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -39,27 +43,93 @@ const FileGrid = ({ files, loading }: FileGridProps) => {
     }
   };
 
-  const handleDownload = async (file: FileData) => {
+  const getDownloadUrl = async (fileId: string, type: 'download' | 'preview' = 'download') => {
     try {
-      // Use the actual file URL for download, not thumbnail
-      const downloadUrl = file.downloadUrl || file.thumbnail;
-      if (downloadUrl) {
-        // Create a temporary link element for download
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.download = file.name;
-        link.target = '_blank';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+      const { data, error } = await supabase.functions.invoke('get-download-url', {
+        body: { fileId, type }
+      });
+
+      if (error) {
+        console.error('Error getting download URL:', error);
+        throw error;
       }
+
+      return data;
     } catch (error) {
-      console.error('Download failed:', error);
+      console.error('Failed to get download URL:', error);
+      throw error;
     }
   };
 
-  const handlePreview = (file: FileData) => {
-    setPreviewFile(file);
+  const handleDownload = async (file: FileData) => {
+    if (downloadingFiles.has(file.id)) return;
+
+    setDownloadingFiles(prev => new Set([...prev, file.id]));
+    
+    try {
+      console.log('[DOWNLOAD] Starting download for file:', file.id);
+      
+      const { url, filename } = await getDownloadUrl(file.id, 'download');
+      
+      if (!url) {
+        throw new Error('No download URL received');
+      }
+
+      console.log('[DOWNLOAD] Got download URL:', url);
+
+      // Create a temporary link element for download
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename || file.name;
+      link.target = '_blank';
+      
+      // Add to DOM, click, then remove
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: "Download Started",
+        description: `Downloading ${filename || file.name}`,
+      });
+
+    } catch (error) {
+      console.error('Download failed:', error);
+      toast({
+        title: "Download Failed",
+        description: "There was an error downloading the file. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingFiles(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(file.id);
+        return newSet;
+      });
+    }
+  };
+
+  const handlePreview = async (file: FileData) => {
+    try {
+      // For preview, try to get the preview URL
+      const { url } = await getDownloadUrl(file.id, 'preview');
+      
+      // Update the file object with the actual URL for preview
+      setPreviewFile({
+        ...file,
+        thumbnail: url
+      });
+    } catch (error) {
+      console.error('Preview failed:', error);
+      // Fallback to original file data
+      setPreviewFile(file);
+      
+      toast({
+        title: "Preview Warning",
+        description: "Could not load preview, showing file info instead.",
+        variant: "destructive",
+      });
+    }
   };
 
   const renderPreviewContent = (file: FileData) => {
@@ -70,6 +140,10 @@ const FileGrid = ({ files, loading }: FileGridProps) => {
             src={file.thumbnail}
             alt={file.name}
             className="w-full h-auto object-contain rounded-lg"
+            onError={(e) => {
+              console.error('Image preview failed to load');
+              e.currentTarget.style.display = 'none';
+            }}
           />
         </div>
       );
@@ -80,6 +154,9 @@ const FileGrid = ({ files, loading }: FileGridProps) => {
             src={file.thumbnail}
             controls
             className="w-full h-auto rounded-lg"
+            onError={(e) => {
+              console.error('Video preview failed to load');
+            }}
           >
             Your browser does not support the video tag.
           </video>
@@ -122,6 +199,10 @@ const FileGrid = ({ files, loading }: FileGridProps) => {
                     src={file.thumbnail}
                     alt={file.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                    onError={(e) => {
+                      // Hide broken image and show icon instead
+                      e.currentTarget.style.display = 'none';
+                    }}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-gray-200">
@@ -171,8 +252,13 @@ const FileGrid = ({ files, loading }: FileGridProps) => {
                     size="sm" 
                     className="h-8 px-3 rounded-lg bg-primary hover:bg-primary/90"
                     onClick={() => handleDownload(file)}
+                    disabled={downloadingFiles.has(file.id)}
                   >
-                    <Download className="h-3 w-3" />
+                    {downloadingFiles.has(file.id) ? (
+                      <div className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    ) : (
+                      <Download className="h-3 w-3" />
+                    )}
                   </Button>
                 </div>
               </div>
@@ -211,9 +297,21 @@ const FileGrid = ({ files, loading }: FileGridProps) => {
                   </div>
                 </div>
                 
-                <Button onClick={() => handleDownload(previewFile)}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Download
+                <Button 
+                  onClick={() => handleDownload(previewFile)}
+                  disabled={downloadingFiles.has(previewFile.id)}
+                >
+                  {downloadingFiles.has(previewFile.id) ? (
+                    <>
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2" />
+                      Downloading...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4 mr-2" />
+                      Download
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
