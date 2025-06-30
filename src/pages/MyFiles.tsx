@@ -151,8 +151,10 @@ const MyFiles = () => {
 
       // Transform the data to match our FileData interface
       const transformedFiles: FileData[] = (filesData || []).map(file => {
-        // Handle the ministry name - it comes as an object or null from LEFT JOIN
-        const ministryName = file.ministries?.name || 'Unassigned Ministry';
+        // Handle the ministry name - LEFT JOIN returns an array, so we take the first element
+        const ministryName = (file.ministries && file.ministries.length > 0) 
+          ? file.ministries[0]?.name || 'Unassigned Ministry'
+          : 'Unassigned Ministry';
           
         return {
           id: file.id,
