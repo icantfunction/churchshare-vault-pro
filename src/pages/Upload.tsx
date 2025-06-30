@@ -1,4 +1,3 @@
-
 import Header from "@/components/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,10 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload as UploadIcon, X, FileText, Image, Video, ArrowLeft } from "lucide-react";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useDemoContext } from "@/contexts/DemoContext";
 import { useMinistries } from "@/hooks/useMinistries";
+import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "react-router-dom";
 import UploadProgress from "@/components/UploadProgress";
 
@@ -30,8 +30,19 @@ const Upload = () => {
   const { toast } = useToast();
   const { isDemoMode, addDemoFile, getTotalFileCount } = useDemoContext();
   const { ministries, isLoading: ministriesLoading } = useMinistries();
+  const { profile } = useAuth();
 
   const currentFileCount = isDemoMode ? getTotalFileCount() : 0;
+
+  // Filter ministries to only show user's own ministry
+  const userMinistries = ministries.filter(m => m.id === profile?.ministry_id);
+
+  // Auto-select user's ministry if they only have one
+  useEffect(() => {
+    if (userMinistries.length === 1 && !ministry) {
+      setMinistry(userMinistries[0].id);
+    }
+  }, [userMinistries, ministry]);
 
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -268,10 +279,16 @@ const Upload = () => {
                   </Label>
                   <Select value={ministry} onValueChange={handleMinistryChange} disabled={ministriesLoading}>
                     <SelectTrigger className={`h-12 rounded-xl ${formErrors.ministry ? 'border-red-500 bg-red-50' : ''}`}>
-                      <SelectValue placeholder={ministriesLoading ? "Loading ministries..." : "Select ministry"} />
+                      <SelectValue placeholder={
+                        ministriesLoading 
+                          ? "Loading ministries..." 
+                          : userMinistries.length === 0 
+                            ? "No ministry assigned" 
+                            : "Select ministry"
+                      } />
                     </SelectTrigger>
                     <SelectContent>
-                      {ministries.map((min) => (
+                      {userMinistries.map((min) => (
                         <SelectItem key={min.id} value={min.id}>
                           {min.name}
                         </SelectItem>
@@ -280,6 +297,11 @@ const Upload = () => {
                   </Select>
                   {formErrors.ministry && (
                     <p className="text-red-600 text-sm">{formErrors.ministry}</p>
+                  )}
+                  {userMinistries.length === 0 && !ministriesLoading && (
+                    <p className="text-amber-600 text-sm">
+                      You are not assigned to any ministry. Contact an administrator to get access.
+                    </p>
                   )}
                 </div>
 
@@ -384,7 +406,7 @@ const Upload = () => {
                 <div className="mt-6 flex gap-4">
                   <Button
                     onClick={handleUpload}
-                    disabled={uploading || ministriesLoading}
+                    disabled={uploading || ministriesLoading || userMinistries.length === 0}
                     className="flex-1 h-12 rounded-xl bg-primary hover:bg-primary/90"
                   >
                     {uploading ? (isDemoMode ? "Adding to Demo..." : "Starting Upload...") : (isDemoMode ? "Add to Demo" : "Upload Files")}

@@ -42,12 +42,9 @@ export const useFiles = () => {
     // If it's already a full URL, return as is
     if (fileUrl.startsWith('http')) return fileUrl;
     
-    // Generate the appropriate S3 URL based on the file key
-    const baseUrl = isPreview 
-      ? `https://${process.env.S3_BUCKET_PREVIEWS || 'churchshare-previews'}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com`
-      : `https://${process.env.S3_BUCKET_ORIGINALS || 'churchshare-originals'}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com`;
-    
-    return `${baseUrl}/${fileUrl}`;
+    // For now, return a placeholder or the file key as-is
+    // In production, this would generate proper S3 URLs
+    return fileUrl;
   };
 
   const fetchFiles = async () => {
