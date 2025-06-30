@@ -9,41 +9,98 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      file_shares: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          file_id: string
+          id: string
+          secret: string
+          shared_by: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          file_id: string
+          id?: string
+          secret: string
+          shared_by: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          file_id?: string
+          id?: string
+          secret?: string
+          shared_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "file_shares_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "file_shares_shared_by_fkey"
+            columns: ["shared_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       files: {
         Row: {
+          compression_ratio: number | null
           created_at: string | null
           event_date: string | null
           file_name: string | null
+          file_size: number
           file_type: string | null
           file_url: string | null
           id: string
           ministry_id: string | null
+          needs_reencode: boolean
           notes: string | null
           organisation_id: string | null
+          preview_key: string | null
+          updated_at: string
           uploader_id: string | null
         }
         Insert: {
+          compression_ratio?: number | null
           created_at?: string | null
           event_date?: string | null
           file_name?: string | null
+          file_size?: number
           file_type?: string | null
           file_url?: string | null
           id?: string
           ministry_id?: string | null
+          needs_reencode?: boolean
           notes?: string | null
           organisation_id?: string | null
+          preview_key?: string | null
+          updated_at?: string
           uploader_id?: string | null
         }
         Update: {
+          compression_ratio?: number | null
           created_at?: string | null
           event_date?: string | null
           file_name?: string | null
+          file_size?: number
           file_type?: string | null
           file_url?: string | null
           id?: string
           ministry_id?: string | null
+          needs_reencode?: boolean
           notes?: string | null
           organisation_id?: string | null
+          preview_key?: string | null
+          updated_at?: string
           uploader_id?: string | null
         }
         Relationships: [
@@ -152,6 +209,27 @@ export type Database = {
         }
         Relationships: []
       }
+      system_logs: {
+        Row: {
+          action: string
+          created_at: string
+          details: string | null
+          id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: string | null
+          id?: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           created_at: string | null
@@ -198,6 +276,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_shares: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
