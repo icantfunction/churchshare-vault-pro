@@ -138,7 +138,7 @@ const MyFiles = () => {
           ministry_id,
           notes,
           created_at,
-          ministries(name)
+          ministries!left(name)
         `)
         .order('created_at', { ascending: false });
 
@@ -151,6 +151,7 @@ const MyFiles = () => {
 
       // Transform the data to match our FileData interface
       const transformedFiles: FileData[] = (filesData || []).map(file => {
+        // Handle the ministry name - it comes as an object or null from LEFT JOIN
         const ministryName = file.ministries?.name || 'Unassigned Ministry';
           
         return {
