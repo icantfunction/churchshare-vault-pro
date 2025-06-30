@@ -1,9 +1,8 @@
-
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Download, Calendar as CalendarLucide, Image, Video, FileText, Eye } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Download, Calendar as CalendarLucide, Image, Video, FileText, Eye, ZoomIn, ZoomOut, RotateCw } from "lucide-react";
 import { FileData } from "@/hooks/useFiles";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,7 +15,11 @@ interface FileGridProps {
 
 const FileGrid = ({ files, loading }: FileGridProps) => {
   const [previewFile, setPreviewFile] = useState<FileData | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>("");
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [downloadingFiles, setDownloadingFiles] = useState<Set<string>>(new Set());
+  const [imageZoom, setImageZoom] = useState(100);
+  const [imageRotation, setImageRotation] = useState(0);
   const { toast } = useToast();
 
   const getTypeIcon = (type: string) => {
@@ -45,18 +48,21 @@ const FileGrid = ({ files, loading }: FileGridProps) => {
 
   const getDownloadUrl = async (fileId: string, type: 'download' | 'preview' = 'download') => {
     try {
+      console.log(`[DEBUG-DOWNLOAD] Requesting ${type} URL for file:`, fileId);
+      
       const { data, error } = await supabase.functions.invoke('get-download-url', {
         body: { fileId, type }
       });
 
       if (error) {
-        console.error('Error getting download URL:', error);
+        console.error(`[DEBUG-DOWNLOAD] Error from Edge Function:`, error);
         throw error;
       }
 
+      console.log(`[DEBUG-DOWNLOAD] Received response:`, data);
       return data;
     } catch (error) {
-      console.error('Failed to get download URL:', error);
+      console.error(`[DEBUG-DOWNLOAD] Failed to get ${type} URL:`, error);
       throw error;
     }
   };
@@ -67,7 +73,7 @@ const FileGrid = ({ files, loading }: FileGridProps) => {
     setDownloadingFiles(prev => new Set([...prev, file.id]));
     
     try {
-      console.log('[DOWNLOAD] Starting download for file:', file.id);
+      console.log('[DEBUG-DOWNLOAD] Starting download for file:', file.id);
       
       const { url, filename } = await getDownloadUrl(file.id, 'download');
       
@@ -75,7 +81,13 @@ const FileGrid = ({ files, loading }: FileGridProps) => {
         throw new Error('No download URL received');
       }
 
-      console.log('[DOWNLOAD] Got download URL:', url);
+      console.log('[DEBUG-DOWNLOAD] Got download URL:', url);
+
+      // Test if URL is accessible
+      const testResponse = await fetch(url, { method: 'HEAD' });
+      if (!testResponse.ok) {
+        throw new Error(`File not accessible: ${testResponse.status} ${testResponse.statusText}`);
+      }
 
       // Create a temporary link element for download
       const link = document.createElement('a');
@@ -94,10 +106,10 @@ const FileGrid = ({ files, loading }: FileGridProps) => {
       });
 
     } catch (error) {
-      console.error('Download failed:', error);
+      console.error('[DEBUG-DOWNLOAD] Download failed:', error);
       toast({
         title: "Download Failed",
-        description: "There was an error downloading the file. Please try again.",
+        description: error instanceof Error ? error.message : "There was an error downloading the file. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -110,52 +122,121 @@ const FileGrid = ({ files, loading }: FileGridProps) => {
   };
 
   const handlePreview = async (file: FileData) => {
+    setPreviewLoading(true);
+    setImageZoom(100);
+    setImageRotation(0);
+    
     try {
-      // For preview, try to get the preview URL
-      const { url } = await getDownloadUrl(file.id, 'preview');
+      console.log('[DEBUG-PREVIEW] Starting preview for file:', file.id, file.type);
       
-      // Update the file object with the actual URL for preview
-      setPreviewFile({
-        ...file,
-        thumbnail: url
-      });
-    } catch (error) {
-      console.error('Preview failed:', error);
-      // Fallback to original file data
+      // Get the preview URL
+      const { url, fileType } = await getDownloadUrl(file.id, 'preview');
+      
+      console.log('[DEBUG-PREVIEW] Got preview URL:', url);
+      
+      setPreviewUrl(url);
       setPreviewFile(file);
+    } catch (error) {
+      console.error('[DEBUG-PREVIEW] Preview failed:', error);
       
       toast({
-        title: "Preview Warning",
-        description: "Could not load preview, showing file info instead.",
+        title: "Preview Error",
+        description: "Could not load preview. Please try downloading the file instead.",
         variant: "destructive",
       });
+    } finally {
+      setPreviewLoading(false);
     }
   };
 
+  const resetImageView = () => {
+    setImageZoom(100);
+    setImageRotation(0);
+  };
+
   const renderPreviewContent = (file: FileData) => {
-    if (file.type === 'image') {
+    if (previewLoading) {
       return (
-        <div className="max-w-full max-h-96 overflow-auto">
-          <img
-            src={file.thumbnail}
-            alt={file.name}
-            className="w-full h-auto object-contain rounded-lg"
-            onError={(e) => {
-              console.error('Image preview failed to load');
-              e.currentTarget.style.display = 'none';
-            }}
-          />
+        <div className="flex items-center justify-center p-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <span className="ml-2">Loading preview...</span>
         </div>
       );
-    } else if (file.type === 'video') {
+    }
+
+    if (file.type === 'image' && previewUrl) {
+      return (
+        <div className="space-y-4">
+          {/* Image Controls */}
+          <div className="flex justify-center gap-2 border-b pb-4">
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => setImageZoom(Math.max(25, imageZoom - 25))}
+              disabled={imageZoom <= 25}
+            >
+              <ZoomOut className="h-4 w-4" />
+            </Button>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => setImageZoom(Math.min(200, imageZoom + 25))}
+              disabled={imageZoom >= 200}
+            >
+              <ZoomIn className="h-4 w-4" />
+            </Button>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => setImageRotation((imageRotation + 90) % 360)}
+            >
+              <RotateCw className="h-4 w-4" />
+            </Button>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={resetImageView}
+            >
+              Reset
+            </Button>
+            <span className="text-sm self-center text-gray-500">{imageZoom}%</span>
+          </div>
+          
+          {/* Image Display */}
+          <div className="max-w-full max-h-96 overflow-auto bg-gray-50 rounded-lg p-4">
+            <img
+              src={previewUrl}
+              alt={file.name}
+              className="mx-auto block rounded-lg shadow-sm transition-transform duration-200"
+              style={{
+                transform: `scale(${imageZoom / 100}) rotate(${imageRotation}deg)`,
+                maxWidth: 'none',
+                height: 'auto'
+              }}
+              onError={(e) => {
+                console.error('[DEBUG-PREVIEW] Image failed to load:', previewUrl);
+                e.currentTarget.style.display = 'none';
+              }}
+              onLoad={() => {
+                console.log('[DEBUG-PREVIEW] Image loaded successfully');
+              }}
+            />
+          </div>
+        </div>
+      );
+    } else if (file.type === 'video' && previewUrl) {
       return (
         <div className="max-w-full max-h-96">
           <video
-            src={file.thumbnail}
+            src={previewUrl}
             controls
-            className="w-full h-auto rounded-lg"
+            className="w-full h-auto rounded-lg shadow-sm"
+            preload="metadata"
             onError={(e) => {
-              console.error('Video preview failed to load');
+              console.error('[DEBUG-PREVIEW] Video failed to load:', previewUrl);
+            }}
+            onLoadedMetadata={() => {
+              console.log('[DEBUG-PREVIEW] Video metadata loaded successfully');
             }}
           >
             Your browser does not support the video tag.
@@ -166,10 +247,10 @@ const FileGrid = ({ files, loading }: FileGridProps) => {
       return (
         <div className="p-8 text-center">
           <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">
+          <p className="text-gray-600 mb-2">
             Preview not available for this file type.
           </p>
-          <p className="text-sm text-gray-500 mt-2">
+          <p className="text-sm text-gray-500">
             Click download to view the file.
           </p>
         </div>
@@ -194,21 +275,9 @@ const FileGrid = ({ files, loading }: FileGridProps) => {
           <Card key={file.id} className="bg-white shadow-lg border-0 hover:shadow-xl transition-all duration-200 cursor-pointer group">
             <CardContent className="p-0">
               <div className="aspect-video bg-gray-100 rounded-t-lg overflow-hidden relative">
-                {file.thumbnail ? (
-                  <img
-                    src={file.thumbnail}
-                    alt={file.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                    onError={(e) => {
-                      // Hide broken image and show icon instead
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                    {getTypeIcon(file.type)}
-                  </div>
-                )}
+                <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                  {getTypeIcon(file.type)}
+                </div>
                 <div className="absolute top-3 right-3">
                   <Badge className={`${getTypeBadgeColor(file.type)} border-0`}>
                     {getTypeIcon(file.type)}
@@ -244,6 +313,7 @@ const FileGrid = ({ files, loading }: FileGridProps) => {
                     variant="outline" 
                     className="flex-1 h-8 text-xs rounded-lg"
                     onClick={() => handlePreview(file)}
+                    disabled={previewLoading}
                   >
                     <Eye className="h-3 w-3 mr-1" />
                     Preview
@@ -267,9 +337,9 @@ const FileGrid = ({ files, loading }: FileGridProps) => {
         ))}
       </div>
 
-      {/* Preview Dialog */}
+      {/* Enhanced Preview Dialog */}
       <Dialog open={!!previewFile} onOpenChange={() => setPreviewFile(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {previewFile && getTypeIcon(previewFile.type)}
