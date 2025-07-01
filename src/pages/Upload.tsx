@@ -34,15 +34,17 @@ const Upload = () => {
 
   const currentFileCount = isDemoMode ? getTotalFileCount() : 0;
 
-  // Filter ministries to only show user's own ministry
-  const userMinistries = ministries.filter(m => m.id === profile?.ministry_id);
+  // Directors can see all ministries, others only see their own
+  const availableMinistries = profile?.role === 'Director' || profile?.role === 'SuperOrg' || profile?.role === 'Admin'
+    ? ministries 
+    : ministries.filter(m => m.id === profile?.ministry_id);
 
-  // Auto-select user's ministry if they only have one
+  // Auto-select user's ministry if they only have one (but Directors should choose manually)
   useEffect(() => {
-    if (userMinistries.length === 1 && !ministry) {
-      setMinistry(userMinistries[0].id);
+    if (availableMinistries.length === 1 && !ministry && profile?.role !== 'Director' && profile?.role !== 'SuperOrg' && profile?.role !== 'Admin') {
+      setMinistry(availableMinistries[0].id);
     }
-  }, [userMinistries, ministry]);
+  }, [availableMinistries, ministry, profile?.role]);
 
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -282,13 +284,15 @@ const Upload = () => {
                       <SelectValue placeholder={
                         ministriesLoading 
                           ? "Loading ministries..." 
-                          : userMinistries.length === 0 
-                            ? "No ministry assigned" 
-                            : "Select ministry"
+                          : availableMinistries.length === 0 
+                            ? "No ministry available" 
+                            : profile?.role === 'Director' || profile?.role === 'SuperOrg' || profile?.role === 'Admin'
+                              ? "Select ministry"
+                              : "Select ministry"
                       } />
                     </SelectTrigger>
                     <SelectContent>
-                      {userMinistries.map((min) => (
+                      {availableMinistries.map((min) => (
                         <SelectItem key={min.id} value={min.id}>
                           {min.name}
                         </SelectItem>
@@ -298,9 +302,12 @@ const Upload = () => {
                   {formErrors.ministry && (
                     <p className="text-red-600 text-sm">{formErrors.ministry}</p>
                   )}
-                  {userMinistries.length === 0 && !ministriesLoading && (
+                  {availableMinistries.length === 0 && !ministriesLoading && (
                     <p className="text-amber-600 text-sm">
-                      You are not assigned to any ministry. Contact an administrator to get access.
+                      {profile?.role === 'Director' || profile?.role === 'SuperOrg' || profile?.role === 'Admin'
+                        ? "No ministries found in the system."
+                        : "You are not assigned to any ministry. Contact an administrator to get access."
+                      }
                     </p>
                   )}
                 </div>
@@ -406,7 +413,7 @@ const Upload = () => {
                 <div className="mt-6 flex gap-4">
                   <Button
                     onClick={handleUpload}
-                    disabled={uploading || ministriesLoading || userMinistries.length === 0}
+                    disabled={uploading || ministriesLoading || availableMinistries.length === 0}
                     className="flex-1 h-12 rounded-xl bg-primary hover:bg-primary/90"
                   >
                     {uploading ? (isDemoMode ? "Adding to Demo..." : "Starting Upload...") : (isDemoMode ? "Add to Demo" : "Upload Files")}

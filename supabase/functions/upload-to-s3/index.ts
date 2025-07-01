@@ -49,6 +49,39 @@ serve(async (req) => {
       return new Response('Ministry ID is required', { status: 400, headers: corsHeaders })
     }
 
+    // Get user profile to check permissions
+    const { data: userProfile, error: profileError } = await supabase
+      .from('users')
+      .select('role, ministry_id')
+      .eq('id', user.id)
+      .single()
+
+    if (profileError || !userProfile) {
+      console.error('[DEBUG] User profile error:', profileError)
+      return new Response('User profile not found', { status: 404, headers: corsHeaders })
+    }
+
+    console.log('[DEBUG] User profile:', {
+      role: userProfile.role,
+      userMinistry: userProfile.ministry_id,
+      uploadMinistry: uploadData.ministryId
+    })
+
+    // Check if user can upload to the specified ministry
+    const canUploadToMinistry = 
+      userProfile.role === 'Director' ||
+      userProfile.role === 'SuperOrg' ||
+      userProfile.role === 'Admin' ||
+      userProfile.ministry_id === uploadData.ministryId
+
+    if (!canUploadToMinistry) {
+      console.log('[DEBUG] Upload denied - user cannot upload to this ministry')
+      return new Response('You do not have permission to upload to this ministry', { 
+        status: 403, 
+        headers: corsHeaders 
+      })
+    }
+
     // Generate unique file key
     const timestamp = Date.now()
     const fileKey = `${user.id}/${timestamp}-${uploadData.fileName}`
