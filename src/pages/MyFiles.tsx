@@ -1,3 +1,4 @@
+
 import Header from "@/components/Header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,8 @@ import FileGrid from "@/components/FileGrid";
 import FilePagination from "@/components/FilePagination";
 
 const ITEMS_PER_PAGE = 12;
+
+const isDevelopment = import.meta.env.DEV;
 
 const MyFiles = () => {
   const { user, profile } = useAuth();
@@ -98,8 +101,8 @@ const MyFiles = () => {
       <Header />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Debug Section - Only show for Directors/Admins */}
-        {(profile?.role === 'Director' || profile?.role === 'Admin' || profile?.role === 'SuperOrg') && (
+        {/* Debug Section - Only show for Directors/Admins and only in development */}
+        {isDevelopment && (profile?.role === 'Director' || profile?.role === 'Admin' || profile?.role === 'SuperOrg') && (
           <Card className="mb-6 border-yellow-200 bg-yellow-50">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -180,10 +183,12 @@ const MyFiles = () => {
             </Button>
           )}
           
-          {/* Show file count and user info for debugging */}
-          <div className="mt-2 text-sm text-gray-500">
-            Files found: {files.length} | Role: {profile?.role} | Ministry: {profile?.ministry_id || 'None'}
-          </div>
+          {/* Show file count and user info - only in development */}
+          {isDevelopment && (
+            <div className="mt-2 text-sm text-gray-500">
+              Files found: {files.length} | Role: {profile?.role} | Ministry: {profile?.ministry_id || 'None'}
+            </div>
+          )}
         </div>
 
         {/* Filters */}
@@ -235,9 +240,11 @@ const MyFiles = () => {
                   : "No files match your current search and filter criteria."
                 }
               </p>
-              <p className="text-sm text-gray-500 mb-4">
-                Raw file count: {files.length} files returned from database
-              </p>
+              {isDevelopment && (
+                <p className="text-sm text-gray-500 mb-4">
+                  Raw file count: {files.length} files returned from database
+                </p>
+              )}
               <Button onClick={handleClearAllFilters} variant="outline">
                 Clear Filters
               </Button>

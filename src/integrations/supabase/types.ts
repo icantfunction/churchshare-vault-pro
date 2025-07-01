@@ -292,6 +292,23 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_ministry_file_counts: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          ministry_id: string
+          ministry_name: string
+          ministry_description: string
+          file_count: number
+        }[]
+      }
+      get_user_kpis: {
+        Args: { user_id_param: string }
+        Returns: {
+          total_files: number
+          total_size: number
+          recent_files: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

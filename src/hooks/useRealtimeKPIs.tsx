@@ -10,6 +10,14 @@ interface KPIData {
   loading: boolean;
 }
 
+const isDevelopment = import.meta.env.DEV;
+
+const debugLog = (message: string, ...args: any[]) => {
+  if (isDevelopment) {
+    console.log(`[DEBUG-KPI] ${message}`, ...args);
+  }
+};
+
 export const useRealtimeKPIs = () => {
   const [kpiData, setKpiData] = useState<KPIData>({
     totalFiles: 0,
@@ -24,40 +32,29 @@ export const useRealtimeKPIs = () => {
     if (!profile || !user) return;
 
     try {
-      console.log('[DEBUG-KPI] Fetching KPIs for user:', user.id, 'role:', profile.role);
+      debugLog('Fetching KPIs for user:', user.id, 'role:', profile.role);
       
-      // Use the same query logic as useFiles to ensure consistency
-      const { data: files, error } = await supabase
-        .from('files')
-        .select('file_size, created_at, uploader_id, ministry_id');
+      // Use the new RPC function for server-side aggregation
+      const { data, error } = await supabase
+        .rpc('get_user_kpis', { user_id_param: user.id })
+        .single();
 
       if (error) {
         console.error('[DEBUG-KPI] Error fetching KPI data:', error);
         return;
       }
 
-      console.log('[DEBUG-KPI] Files for KPI calculation:', files?.length || 0);
+      debugLog('KPI data received:', data);
 
-      // Calculate totals based on the files the user can actually see
-      const totalFiles = files?.length || 0;
-      const totalSize = files?.reduce((sum, file) => sum + (file.file_size || 0), 0) || 0;
-      
-      // Calculate recent files (last 7 days)
-      const oneWeekAgo = new Date();
-      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-      
-      const recentFiles = files?.filter(file => 
-        new Date(file.created_at) > oneWeekAgo
-      ).length || 0;
-
-      console.log('[DEBUG-KPI] Calculated KPIs:', { totalFiles, totalSize, recentFiles });
-
-      setKpiData({
-        totalFiles,
-        totalSize,
-        recentFiles,
+      const kpiResults = {
+        totalFiles: Number(data.total_files) || 0,
+        totalSize: Number(data.total_size) || 0,
+        recentFiles: Number(data.recent_files) || 0,
         loading: false,
-      });
+      };
+
+      debugLog('Calculated KPIs:', kpiResults);
+      setKpiData(kpiResults);
     } catch (error) {
       console.error('[DEBUG-KPI] Error in fetchKPIs:', error);
       setKpiData(prev => ({ ...prev, loading: false }));
@@ -89,7 +86,7 @@ export const useRealtimeKPIs = () => {
           table: 'files'
         },
         () => {
-          console.log('[DEBUG-KPI] Real-time update triggered');
+          debugLog('Real-time update triggered');
           fetchKPIs();
         }
       )

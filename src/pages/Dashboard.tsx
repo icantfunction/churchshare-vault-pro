@@ -17,6 +17,14 @@ interface Ministry {
   file_count?: number;
 }
 
+const isDevelopment = import.meta.env.DEV;
+
+const debugLog = (message: string, ...args: any[]) => {
+  if (isDevelopment) {
+    console.log(`[DEBUG-DASHBOARD] ${message}`, ...args);
+  }
+};
+
 const Dashboard = () => {
   const { user, profile, signOut, profileError, profileRetryCount, refreshProfile } = useAuth();
   const navigate = useNavigate();
@@ -27,7 +35,7 @@ const Dashboard = () => {
   // Debug admin panel visibility
   const canAccessAdmin = ['Admin', 'Director', 'SuperOrg'].includes(profile?.role || '');
   
-  console.log('[DEBUG-DASHBOARD] Admin panel state:', {
+  debugLog('Admin panel state:', {
     profileRole: profile?.role,
     canAccessAdmin,
     hasProfile: !!profile,
@@ -43,39 +51,24 @@ const Dashboard = () => {
 
   const fetchMinistries = async () => {
     try {
-      console.log('[DEBUG-DASHBOARD] Fetching ministries and file counts');
+      debugLog('Fetching ministries with file counts using RPC');
+      
+      // Use the new RPC function for efficient ministry data with counts
       const { data, error } = await supabase
-        .from('ministries')
-        .select(`
-          id,
-          name,
-          description
-        `)
-        .order('name');
+        .rpc('get_ministry_file_counts');
 
       if (error) throw error;
 
-      console.log('[DEBUG-DASHBOARD] Raw ministries data:', data);
+      debugLog('Ministry data with counts received:', data);
 
-      // Get file counts for each ministry
-      const ministriesWithCounts = await Promise.all(
-        (data || []).map(async (ministry) => {
-          console.log('[DEBUG-DASHBOARD] Getting file count for ministry:', ministry.name, ministry.id);
-          const { count, error: countError } = await supabase
-            .from('files')
-            .select('*', { count: 'exact', head: true })
-            .eq('ministry_id', ministry.id);
-          
-          if (countError) {
-            console.error('[DEBUG-DASHBOARD] Error getting file count for ministry:', ministry.id, countError);
-          }
-          
-          console.log('[DEBUG-DASHBOARD] File count for', ministry.name, ':', count);
-          return { ...ministry, file_count: count || 0 };
-        })
-      );
+      const ministriesWithCounts: Ministry[] = (data || []).map(ministry => ({
+        id: ministry.ministry_id,
+        name: ministry.ministry_name,
+        description: ministry.ministry_description || 'No description available',
+        file_count: Number(ministry.file_count) || 0,
+      }));
 
-      console.log('[DEBUG-DASHBOARD] Final ministries with counts:', ministriesWithCounts);
+      debugLog('Final ministries with counts:', ministriesWithCounts);
       setMinistries(ministriesWithCounts);
     } catch (error) {
       console.error('Error fetching ministries:', error);
@@ -85,13 +78,13 @@ const Dashboard = () => {
   };
 
   const handleSignOut = async () => {
-    console.log('[DEBUG-DASHBOARD] Sign out initiated from Dashboard');
+    debugLog('Sign out initiated from Dashboard');
     // Just call signOut - let the auth system handle navigation
     await signOut();
   };
 
   const handleRefreshProfile = () => {
-    console.log('[DEBUG-DASHBOARD] Manual profile refresh requested');
+    debugLog('Manual profile refresh requested');
     if (refreshProfile) {
       refreshProfile();
     }
