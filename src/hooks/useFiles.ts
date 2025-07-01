@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import type { FileWithMinistry } from '@/types/database';
 
 export interface FileData {
   id: string;
@@ -94,10 +95,9 @@ export const useFiles = () => {
         });
       }
 
-      const transformedFiles: FileData[] = (filesData || []).map(file => {
-        const ministryName = (file.ministries && file.ministries.length > 0) 
-          ? file.ministries[0]?.name || 'Unassigned Ministry'
-          : 'Unassigned Ministry';
+      const transformedFiles: FileData[] = (filesData || []).map((file: FileWithMinistry) => {
+        // Handle ministry data - it should be an object, not an array
+        const ministryName = file.ministries?.name || 'Unassigned Ministry';
           
         return {
           id: file.id,

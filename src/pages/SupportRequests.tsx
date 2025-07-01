@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,85 +8,28 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
 import { Plus, MessageSquare, Clock, CheckCircle, AlertCircle } from 'lucide-react';
-
-interface SupportRequest {
-  id: string;
-  subject: string;
-  message: string;
-  status: 'open' | 'in_progress' | 'resolved' | 'closed';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  created_at: string;
-  updated_at: string;
-}
+import { useSupportRequests } from '@/hooks/useSupportRequests';
 
 const SupportRequests = () => {
-  const [requests, setRequests] = useState<SupportRequest[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { requests, loading, createRequest } = useSupportRequests();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newRequest, setNewRequest] = useState({
     subject: '',
     message: '',
     priority: 'medium' as const
   });
-  
-  const { profile } = useAuth();
-  const { toast } = useToast();
 
-  const fetchRequests = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('support_requests')
-        .select('*')
-        .order('created_at', { ascending: false });
+  const handleCreateRequest = async () => {
+    const success = await createRequest({
+      subject: newRequest.subject,
+      message: newRequest.message,
+      priority: newRequest.priority
+    });
 
-      if (error) throw error;
-      setRequests(data || []);
-    } catch (error) {
-      console.error('Error fetching support requests:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load support requests",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const createRequest = async () => {
-    if (!profile) return;
-    
-    try {
-      const { error } = await supabase
-        .from('support_requests')
-        .insert({
-          user_id: profile.id,
-          subject: newRequest.subject,
-          message: newRequest.message,
-          priority: newRequest.priority
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Support request created successfully"
-      });
-
+    if (success) {
       setNewRequest({ subject: '', message: '', priority: 'medium' });
       setIsDialogOpen(false);
-      fetchRequests();
-    } catch (error) {
-      console.error('Error creating support request:', error);
-      toast({
-        title: "Error",
-        description: "Failed to create support request",
-        variant: "destructive"
-      });
     }
   };
 
@@ -119,10 +62,6 @@ const SupportRequests = () => {
       default: return 'bg-gray-100 text-gray-800';
     }
   };
-
-  useEffect(() => {
-    fetchRequests();
-  }, []);
 
   if (loading) {
     return <div className="p-8">Loading...</div>;
@@ -177,7 +116,7 @@ const SupportRequests = () => {
                   rows={4}
                 />
               </div>
-              <Button onClick={createRequest} className="w-full">
+              <Button onClick={handleCreateRequest} className="w-full">
                 Create Request
               </Button>
             </div>
