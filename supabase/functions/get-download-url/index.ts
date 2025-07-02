@@ -110,16 +110,29 @@ serve(async (req) => {
       return new Response('File URL not available', { status: 404, headers: corsHeaders })
     }
 
-    // Generate CloudFront URL
-    const cloudFrontUrl = type === 'preview' 
-      ? `${Deno.env.get('CLOUDFRONT_URL_PREVIEWS')}/${fileKey}`
-      : `${Deno.env.get('CLOUDFRONT_URL_ORIGINALS')}/${fileKey}`
+    // Generate CloudFront URL with fallback
+    const cloudFrontBaseUrl = type === 'preview' 
+      ? Deno.env.get('CLOUDFRONT_URL_PREVIEWS')
+      : Deno.env.get('CLOUDFRONT_URL_ORIGINALS')
 
-    console.log(`[DOWNLOAD] Generated URL: ${cloudFrontUrl}`)
+    let finalUrl: string;
+    
+    if (cloudFrontBaseUrl) {
+      finalUrl = `${cloudFrontBaseUrl}/${fileKey}`;
+    } else {
+      // Fallback to direct S3 URL if CloudFront is not configured
+      const bucketName = type === 'preview' 
+        ? Deno.env.get('S3_BUCKET_PREVIEWS')
+        : Deno.env.get('S3_BUCKET_ORIGINALS');
+      const region = Deno.env.get('AWS_REGION') || 'us-east-1';
+      finalUrl = `https://${bucketName}.s3.${region}.amazonaws.com/${fileKey}`;
+    }
+
+    console.log(`[DOWNLOAD] Generated URL: ${finalUrl}`)
 
     return new Response(
       JSON.stringify({ 
-        url: cloudFrontUrl,
+        url: finalUrl,
         filename: file.file_name,
         fileType: file.file_type
       }),

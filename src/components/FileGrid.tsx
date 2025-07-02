@@ -4,13 +4,17 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Download, Calendar as CalendarLucide, Image, Video, FileText, Eye, ZoomIn, ZoomOut, RotateCw } from "lucide-react";
 import { FileData } from "@/hooks/useFiles";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 interface FileGridProps {
   files: FileData[];
   loading: boolean;
+}
+
+interface ThumbnailCache {
+  [key: string]: string;
 }
 
 const FileGrid = ({ files, loading }: FileGridProps) => {
@@ -20,6 +24,7 @@ const FileGrid = ({ files, loading }: FileGridProps) => {
   const [downloadingFiles, setDownloadingFiles] = useState<Set<string>>(new Set());
   const [imageZoom, setImageZoom] = useState(100);
   const [imageRotation, setImageRotation] = useState(0);
+  const [thumbnailCache, setThumbnailCache] = useState<ThumbnailCache>({});
   const { toast } = useToast();
 
   const getTypeIcon = (type: string) => {
@@ -149,6 +154,26 @@ const FileGrid = ({ files, loading }: FileGridProps) => {
     }
   };
 
+  // Load thumbnails for image files
+  useEffect(() => {
+    const loadThumbnails = async () => {
+      for (const file of files) {
+        if (file.type === 'image' && !thumbnailCache[file.id]) {
+          try {
+            const { url } = await getDownloadUrl(file.id, 'preview');
+            setThumbnailCache(prev => ({ ...prev, [file.id]: url }));
+          } catch (error) {
+            console.log(`[DEBUG-THUMBNAIL] Failed to load thumbnail for ${file.id}:`, error);
+          }
+        }
+      }
+    };
+
+    if (files.length > 0) {
+      loadThumbnails();
+    }
+  }, [files]);
+
   const resetImageView = () => {
     setImageZoom(100);
     setImageRotation(0);
@@ -275,9 +300,25 @@ const FileGrid = ({ files, loading }: FileGridProps) => {
           <Card key={file.id} className="bg-white shadow-lg border-0 hover:shadow-xl transition-all duration-200 cursor-pointer group">
             <CardContent className="p-0">
               <div className="aspect-video bg-gray-100 rounded-t-lg overflow-hidden relative">
-                <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                  {getTypeIcon(file.type)}
-                </div>
+                {file.type === 'image' && thumbnailCache[file.id] ? (
+                  <img
+                    src={thumbnailCache[file.id]}
+                    alt={file.name}
+                    className="w-full h-full object-cover"
+                    onError={() => {
+                      // Remove from cache if failed to load
+                      setThumbnailCache(prev => {
+                        const newCache = { ...prev };
+                        delete newCache[file.id];
+                        return newCache;
+                      });
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                    {getTypeIcon(file.type)}
+                  </div>
+                )}
                 <div className="absolute top-3 right-3">
                   <Badge className={`${getTypeBadgeColor(file.type)} border-0`}>
                     {getTypeIcon(file.type)}
