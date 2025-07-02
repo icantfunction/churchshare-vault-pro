@@ -160,7 +160,9 @@ const FileGrid = ({ files, loading }: FileGridProps) => {
       for (const file of files) {
         if (file.type === 'image' && !thumbnailCache[file.id]) {
           try {
+            console.log(`[DEBUG-THUMBNAIL] Loading thumbnail for ${file.id}`);
             const { url } = await getDownloadUrl(file.id, 'preview');
+            console.log(`[DEBUG-THUMBNAIL] Got URL for ${file.id}:`, url);
             setThumbnailCache(prev => ({ ...prev, [file.id]: url }));
           } catch (error) {
             console.log(`[DEBUG-THUMBNAIL] Failed to load thumbnail for ${file.id}:`, error);
@@ -305,7 +307,12 @@ const FileGrid = ({ files, loading }: FileGridProps) => {
                     src={thumbnailCache[file.id]}
                     alt={file.name}
                     className="w-full h-full object-cover"
-                    onError={() => {
+                    onLoad={() => {
+                      console.log(`[DEBUG-THUMBNAIL] Image loaded successfully for ${file.id}`);
+                    }}
+                    onError={(e) => {
+                      console.error(`[DEBUG-THUMBNAIL] Image failed to load for ${file.id}:`, e);
+                      console.error(`[DEBUG-THUMBNAIL] Failed URL:`, thumbnailCache[file.id]);
                       // Remove from cache if failed to load
                       setThumbnailCache(prev => {
                         const newCache = { ...prev };
