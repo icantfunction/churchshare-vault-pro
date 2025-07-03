@@ -309,6 +309,7 @@ serve(async (req) => {
       )
     } else if (uploadData.fileType.startsWith('image/')) {
       // Trigger thumbnail generation for images
+      console.log('[UPLOAD] Starting thumbnail generation for:', uploadData.fileName, 'Type:', uploadData.fileType);
       EdgeRuntime.waitUntil(
         supabase.functions.invoke('generate-thumbnail', {
           body: {
@@ -317,12 +318,14 @@ serve(async (req) => {
             previewKey,
             fileType: uploadData.fileType
           }
-        }).then(({ error }) => {
+        }).then(({ data, error }) => {
           if (error) {
             console.error('[UPLOAD] Thumbnail generation trigger error:', error)
           } else {
-            console.log('[UPLOAD] Thumbnail generation triggered successfully')
+            console.log('[UPLOAD] Thumbnail generation triggered successfully:', data)
           }
+        }).catch(err => {
+          console.error('[UPLOAD] Thumbnail generation invocation failed:', err)
         })
       )
     }

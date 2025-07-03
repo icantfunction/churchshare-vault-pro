@@ -14,5 +14,23 @@ port = 54323
 [functions]
 verify_jwt = true
 
+[functions.create-share-link]
+verify_jwt = true
+
 [functions.generate-thumbnail]
+verify_jwt = true
+
+[functions.get-download-url]
+verify_jwt = true
+
+[functions.get-signed-hls-url]
+verify_jwt = true
+
+[functions.process-file-metadata]
+verify_jwt = true
+
+[functions.redeem-invite]
+verify_jwt = true
+
+[functions.upload-to-s3]
 verify_jwt = true
