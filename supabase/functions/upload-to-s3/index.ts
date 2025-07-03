@@ -154,46 +154,120 @@ serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
-
-    const authHeader = req.headers.get('Authorization')!
-    const token = authHeader.replace('Bearer ', '')
+    console.log('[UPLOAD] Starting upload request processing')
     
-    const { data: { user } } = await supabase.auth.getUser(token)
-    if (!user) {
+    // Step 1: Verify AWS Configuration
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    const s3Bucket = Deno.env.get('S3_BUCKET_ORIGINALS')
+    const awsRegion = Deno.env.get('AWS_REGION')
+    const awsAccessKeyId = Deno.env.get('AWS_ACCESS_KEY_ID')
+    const awsSecretAccessKey = Deno.env.get('AWS_SECRET_ACCESS_KEY')
+    
+    console.log('[UPLOAD] Environment check:', {
+      hasSupabaseUrl: !!supabaseUrl,
+      hasSupabaseKey: !!supabaseServiceKey,
+      hasS3Bucket: !!s3Bucket,
+      hasAwsRegion: !!awsRegion,
+      hasAwsAccessKey: !!awsAccessKeyId,
+      hasAwsSecretKey: !!awsSecretAccessKey
+    })
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('[UPLOAD] Missing Supabase configuration')
+      return new Response('Missing Supabase configuration', { status: 500, headers: corsHeaders })
+    }
+
+    if (!s3Bucket || !awsRegion || !awsAccessKeyId || !awsSecretAccessKey) {
+      console.error('[UPLOAD] Missing AWS configuration')
+      return new Response('Missing AWS configuration', { status: 500, headers: corsHeaders })
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    console.log('[UPLOAD] Supabase client created successfully')
+
+    // Step 2: Validate and authenticate user
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      console.error('[UPLOAD] Missing authorization header')
+      return new Response('Missing authorization header', { status: 401, headers: corsHeaders })
+    }
+
+    const token = authHeader.replace('Bearer ', '')
+    console.log('[UPLOAD] Extracting user from token')
+    
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    if (authError || !user) {
+      console.error('[UPLOAD] Authentication failed:', authError)
       return new Response('Unauthorized', { status: 401, headers: corsHeaders })
     }
 
-    const uploadData: UploadRequest = await req.json()
+    console.log('[UPLOAD] User authenticated:', user.id)
 
-    console.log('[DEBUG] Upload request:', {
-      fileName: uploadData.fileName,
-      ministryId: uploadData.ministryId,
-      userId: user.id,
-      eventDate: uploadData.eventDate
-    })
+    // Step 3: Parse and validate request data
+    let uploadData: UploadRequest
+    try {
+      uploadData = await req.json()
+      console.log('[UPLOAD] Request data parsed:', {
+        fileName: uploadData.fileName,
+        fileSize: uploadData.fileSize,
+        fileType: uploadData.fileType,
+        ministryId: uploadData.ministryId,
+        eventDate: uploadData.eventDate
+      })
+    } catch (parseError) {
+      console.error('[UPLOAD] Failed to parse request JSON:', parseError)
+      return new Response('Invalid JSON in request body', { status: 400, headers: corsHeaders })
+    }
 
-    // Validate ministry ID is provided
-    if (!uploadData.ministryId) {
+    // Step 4: Validate request data
+    if (!uploadData.fileName || uploadData.fileName.trim() === '') {
+      console.error('[UPLOAD] Missing or empty fileName')
+      return new Response('File name is required', { status: 400, headers: corsHeaders })
+    }
+
+    if (!uploadData.fileType || uploadData.fileType.trim() === '') {
+      console.error('[UPLOAD] Missing or empty fileType')
+      return new Response('File type is required', { status: 400, headers: corsHeaders })
+    }
+
+    if (!uploadData.fileSize || uploadData.fileSize <= 0) {
+      console.error('[UPLOAD] Invalid file size:', uploadData.fileSize)
+      return new Response('Valid file size is required', { status: 400, headers: corsHeaders })
+    }
+
+    if (!uploadData.ministryId || uploadData.ministryId.trim() === '') {
+      console.error('[UPLOAD] Missing ministryId')
       return new Response('Ministry ID is required', { status: 400, headers: corsHeaders })
     }
 
-    // Get user profile to check permissions
+    console.log('[UPLOAD] Request validation passed')
+
+    // Step 5: Get user profile and check permissions
+    console.log('[UPLOAD] Fetching user profile for permissions check')
     const { data: userProfile, error: profileError } = await supabase
       .from('users')
       .select('role, ministry_id')
       .eq('id', user.id)
       .single()
 
-    if (profileError || !userProfile) {
-      console.error('[DEBUG] User profile error:', profileError)
+    if (profileError) {
+      console.error('[UPLOAD] User profile fetch error:', {
+        error: profileError,
+        code: profileError.code,
+        message: profileError.message,
+        details: profileError.details
+      })
+      return new Response('Failed to fetch user profile', { status: 500, headers: corsHeaders })
+    }
+
+    if (!userProfile) {
+      console.error('[UPLOAD] User profile not found for user:', user.id)
       return new Response('User profile not found', { status: 404, headers: corsHeaders })
     }
 
-    console.log('[DEBUG] User profile:', {
+    console.log('[UPLOAD] User profile retrieved:', {
+      userId: user.id,
       role: userProfile.role,
       userMinistry: userProfile.ministry_id,
       uploadMinistry: uploadData.ministryId
@@ -206,63 +280,76 @@ serve(async (req) => {
       userProfile.role === 'Admin' ||
       userProfile.ministry_id === uploadData.ministryId
 
+    console.log('[UPLOAD] Ministry permission check:', {
+      userRole: userProfile.role,
+      canUpload: canUploadToMinistry,
+      reason: canUploadToMinistry ? 'Authorized' : 'Not authorized for this ministry'
+    })
+
     if (!canUploadToMinistry) {
-      console.log('[DEBUG] Upload denied - user cannot upload to this ministry')
+      console.error('[UPLOAD] Upload denied - insufficient permissions')
       return new Response('You do not have permission to upload to this ministry', { 
         status: 403, 
         headers: corsHeaders 
       })
     }
 
-    // Use the already validated custom filename from the client
-    const sanitizedFileName = uploadData.fileName
+    // Step 6: Process filename and generate file keys
+    console.log('[UPLOAD] Processing filename and generating keys')
     
-    // Generate unique file key
+    // Sanitize filename: remove path separators and control characters
+    let sanitizedFileName = uploadData.fileName
+      .replace(/[/\\]/g, '_')  // Replace path separators
+      .replace(/[\x00-\x1f\x80-\x9f]/g, '')  // Remove control characters
+      .trim()
+
+    if (sanitizedFileName === '') {
+      console.error('[UPLOAD] Filename became empty after sanitization')
+      return new Response('Invalid filename', { status: 400, headers: corsHeaders })
+    }
+    
+    // Generate unique file key with timestamp
     const timestamp = Date.now()
     const fileKey = `${user.id}/${timestamp}-${sanitizedFileName}`
     const previewKey = `${user.id}/${timestamp}-${sanitizedFileName.split('.')[0]}`
     
-    console.log('[DEBUG] File naming:', {
+    console.log('[UPLOAD] File naming completed:', {
       original: uploadData.fileName,
       sanitized: sanitizedFileName,
       fileKey,
-      previewKey
+      previewKey,
+      timestamp
     })
 
-    // Create AWS S3 presigned URL for file upload
-    const s3Bucket = Deno.env.get('S3_BUCKET_ORIGINALS')
-    const awsRegion = Deno.env.get('AWS_REGION')
-    const awsAccessKeyId = Deno.env.get('AWS_ACCESS_KEY_ID')
-    const awsSecretAccessKey = Deno.env.get('AWS_SECRET_ACCESS_KEY')
-    
-    console.log('[DEBUG] AWS Config check:', {
-      bucket: s3Bucket ? 'configured' : 'missing',
-      region: awsRegion ? 'configured' : 'missing',
-      accessKey: awsAccessKeyId ? 'configured' : 'missing',
-      secretKey: awsSecretAccessKey ? 'configured' : 'missing'
-    })
-
-    if (!s3Bucket || !awsRegion || !awsAccessKeyId || !awsSecretAccessKey) {
-      throw new Error('Missing required AWS configuration')
+    // Step 7: Generate presigned URL for S3 upload
+    console.log('[UPLOAD] Generating presigned URL for S3 upload')
+    let uploadUrl: string
+    try {
+      uploadUrl = await generatePresignedUrl(
+        s3Bucket,
+        fileKey,
+        awsRegion,
+        awsAccessKeyId,
+        awsSecretAccessKey,
+        uploadData.fileType
+      )
+      console.log('[UPLOAD] Presigned URL generated successfully')
+    } catch (urlError) {
+      console.error('[UPLOAD] Failed to generate presigned URL:', urlError)
+      return new Response('Failed to generate upload URL', { status: 500, headers: corsHeaders })
     }
 
-    // Generate presigned URL for S3 upload
-    const uploadUrl = await generatePresignedUrl(
-      s3Bucket,
-      fileKey,
-      awsRegion,
-      awsAccessKeyId,
-      awsSecretAccessKey,
-      uploadData.fileType
-    )
-
-    // Handle empty or invalid event dates
-    let eventDateValue = null;
+    // Step 8: Handle event date validation
+    let eventDateValue = null
     if (uploadData.eventDate && uploadData.eventDate.trim() !== '') {
-      eventDateValue = uploadData.eventDate;
+      eventDateValue = uploadData.eventDate
+      console.log('[UPLOAD] Event date set:', eventDateValue)
+    } else {
+      console.log('[UPLOAD] No event date provided')
     }
 
-    // Create file record in database with ministry ID
+    // Step 9: Create file record in database
+    console.log('[UPLOAD] Creating file record in database')
     const { data: fileData, error: fileError } = await supabase
       .from('files')
       .insert({
@@ -281,11 +368,20 @@ serve(async (req) => {
       .single()
 
     if (fileError) {
-      console.error('File record creation error:', fileError)
+      console.error('[UPLOAD] File record creation failed:', {
+        error: fileError,
+        code: fileError.code,
+        message: fileError.message,
+        details: fileError.details
+      })
       return new Response('Failed to create file record', { status: 500, headers: corsHeaders })
     }
 
-    console.log('[DEBUG] File record created successfully:', fileData.id)
+    console.log('[UPLOAD] File record created successfully:', {
+      fileId: fileData.id,
+      fileName: fileData.file_name,
+      ministryId: fileData.ministry_id
+    })
 
     // Trigger processing for video files and thumbnail generation for images
     if (uploadData.fileType.startsWith('video/')) {
@@ -327,6 +423,12 @@ serve(async (req) => {
       )
     }
 
+    console.log('[UPLOAD] Upload preparation completed successfully:', {
+      fileId: fileData.id,
+      fileKey,
+      previewKey
+    })
+
     return new Response(JSON.stringify({
       fileId: fileData.id,
       presignedUrl: uploadUrl,
@@ -338,7 +440,17 @@ serve(async (req) => {
     })
 
   } catch (error) {
-    console.error('Upload preparation error:', error)
-    return new Response('Internal server error', { status: 500, headers: corsHeaders })
+    console.error('[UPLOAD] Fatal error in upload preparation:', {
+      error: error.message,
+      stack: error.stack,
+      name: error.name
+    })
+    return new Response(JSON.stringify({
+      error: 'Internal server error',
+      message: error.message
+    }), { 
+      status: 500, 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
   }
 })
