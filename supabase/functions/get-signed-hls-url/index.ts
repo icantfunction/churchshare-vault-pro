@@ -1,6 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.1'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 // AWS S3 Presigned URL generation for GET requests
 async function generatePresignedGetUrl(
