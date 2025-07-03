@@ -214,11 +214,8 @@ serve(async (req) => {
       })
     }
 
-    // Sanitize filename to avoid encoding issues
+    // Use the already validated custom filename from the client
     const sanitizedFileName = uploadData.fileName
-      .replace(/[^a-zA-Z0-9.-]/g, '_') // Replace special chars with underscore
-      .replace(/_{2,}/g, '_') // Replace multiple underscores with single
-      .replace(/^_|_$/g, '') // Remove leading/trailing underscores
     
     // Generate unique file key
     const timestamp = Date.now()

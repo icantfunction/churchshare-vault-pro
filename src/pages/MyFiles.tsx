@@ -34,7 +34,7 @@ const MyFiles = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [showDebug, setShowDebug] = useState(false);
   
-  const { files, loading } = useFiles();
+  const { files, loading, refetch } = useFiles();
   const { ministries } = useMinistries();
   const { debugInfo, loading: debugLoading, runDebugQuery } = useDebugFiles();
   
@@ -226,7 +226,7 @@ const MyFiles = () => {
         </div>
 
         {/* File Grid */}
-        <FileGrid files={paginatedFiles} loading={loading} />
+        <FileGrid files={paginatedFiles} loading={loading} onFileDeleted={() => refetch()} />
 
         {/* Empty State */}
         {!loading && filteredFiles.length === 0 && (

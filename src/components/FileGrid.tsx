@@ -1,8 +1,9 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Download, Calendar as CalendarLucide, Image, Video, FileText, Eye, ZoomIn, ZoomOut, RotateCw } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Download, Calendar as CalendarLucide, Image, Video, FileText, Eye, ZoomIn, ZoomOut, RotateCw, Trash2 } from "lucide-react";
 import { FileData } from "@/hooks/useFiles";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,17 +12,20 @@ import { useToast } from "@/hooks/use-toast";
 interface FileGridProps {
   files: FileData[];
   loading: boolean;
+  onFileDeleted?: (fileId: string) => void;
 }
 
 interface ThumbnailCache {
   [key: string]: string;
 }
 
-const FileGrid = ({ files, loading }: FileGridProps) => {
+const FileGrid = ({ files, loading, onFileDeleted }: FileGridProps) => {
   const [previewFile, setPreviewFile] = useState<FileData | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const [previewLoading, setPreviewLoading] = useState(false);
   const [downloadingFiles, setDownloadingFiles] = useState<Set<string>>(new Set());
+  const [deletingFiles, setDeletingFiles] = useState<Set<string>>(new Set());
+  const [fileToDelete, setFileToDelete] = useState<FileData | null>(null);
   const [imageZoom, setImageZoom] = useState(100);
   const [imageRotation, setImageRotation] = useState(0);
   const [thumbnailCache, setThumbnailCache] = useState<ThumbnailCache>({});
@@ -144,6 +148,52 @@ const FileGrid = ({ files, loading }: FileGridProps) => {
       });
     } finally {
       setPreviewLoading(false);
+    }
+  };
+
+  const handleDelete = async (file: FileData) => {
+    if (deletingFiles.has(file.id)) return;
+
+    setDeletingFiles(prev => new Set([...prev, file.id]));
+    
+    try {
+      console.log('[DEBUG-DELETE] Starting delete for file:', file.id);
+      
+      const { data, error } = await supabase.functions.invoke('delete-file', {
+        body: { fileId: file.id }
+      });
+
+      if (error) {
+        console.error('[DEBUG-DELETE] Error from Edge Function:', error);
+        throw error;
+      }
+
+      console.log('[DEBUG-DELETE] Delete successful:', data);
+      
+      toast({
+        title: "File Deleted",
+        description: `${file.name} has been deleted successfully.`,
+      });
+
+      // Call the callback to refresh the file list
+      if (onFileDeleted) {
+        onFileDeleted(file.id);
+      }
+
+    } catch (error) {
+      console.error('[DEBUG-DELETE] Delete failed:', error);
+      toast({
+        title: "Delete Failed",
+        description: error instanceof Error ? error.message : "There was an error deleting the file. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingFiles(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(file.id);
+        return newSet;
+      });
+      setFileToDelete(null);
     }
   };
 
@@ -371,6 +421,19 @@ const FileGrid = ({ files, loading }: FileGridProps) => {
                       <Download className="h-3 w-3" />
                     )}
                   </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    className="h-8 px-3 rounded-lg text-red-600 hover:text-red-700 hover:bg-red-50"
+                    onClick={() => setFileToDelete(file)}
+                    disabled={deletingFiles.has(file.id)}
+                  >
+                    {deletingFiles.has(file.id) ? (
+                      <div className="h-3 w-3 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
+                    ) : (
+                      <Trash2 className="h-3 w-3" />
+                    )}
+                  </Button>
                 </div>
               </div>
             </CardContent>
@@ -429,6 +492,27 @@ const FileGrid = ({ files, loading }: FileGridProps) => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!fileToDelete} onOpenChange={() => setFileToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete File</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{fileToDelete?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => fileToDelete && handleDelete(fileToDelete)}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
