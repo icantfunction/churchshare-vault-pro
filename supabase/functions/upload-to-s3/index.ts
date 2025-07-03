@@ -246,20 +246,21 @@ serve(async (req) => {
 
     console.log('[DEBUG] File record created successfully:', fileData.id)
 
-    // Trigger MediaConvert processing for video files
+    // Trigger processing for video files (using supabase.functions.invoke)
     if (uploadData.fileType.startsWith('video/')) {
       EdgeRuntime.waitUntil(
-        fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/process-file-metadata`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
+        supabase.functions.invoke('process-file-metadata', {
+          body: {
             fileId: fileData.id,
             fileKey,
             previewKey
-          })
+          }
+        }).then(({ error }) => {
+          if (error) {
+            console.error('[UPLOAD] Processing trigger error:', error)
+          } else {
+            console.log('[UPLOAD] Processing triggered successfully')
+          }
         })
       )
     }
