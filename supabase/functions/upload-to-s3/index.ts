@@ -19,19 +19,42 @@ async function generatePresignedUrl(
   const algorithm = 'AWS4-HMAC-SHA256'
   const credential = `${accessKeyId}/${dateStamp}/${region}/s3/aws4_request`
   
-  // Create canonical request
-  const method = 'PUT'
-  const canonicalUri = `/${key}`
-  const canonicalQueryString = [
-    `X-Amz-Algorithm=${algorithm}`,
-    `X-Amz-Credential=${encodeURIComponent(credential)}`,
-    `X-Amz-Date=${dateString}`,
-    `X-Amz-Expires=${expiresIn}`,
-    `X-Amz-SignedHeaders=host`
-  ].join('&')
+  // Properly encode the key for the canonical URI
+  const encodedKey = encodeURIComponent(key).replace(/%2F/g, '/')
   
-  const canonicalHeaders = `host:${bucket}.s3.${region}.amazonaws.com\n`
-  const signedHeaders = 'host'
+  console.log('[DEBUG] Signature generation inputs:', {
+    bucket,
+    key,
+    encodedKey,
+    region,
+    contentType,
+    dateString,
+    credential
+  })
+  
+  // Create canonical request with content-type included in signed headers
+  const method = 'PUT'
+  const canonicalUri = `/${encodedKey}`
+  
+  // Query parameters must be in alphabetical order
+  const queryParams = new URLSearchParams()
+  queryParams.set('X-Amz-Algorithm', algorithm)
+  queryParams.set('X-Amz-Credential', credential)
+  queryParams.set('X-Amz-Date', dateString)
+  queryParams.set('X-Amz-Expires', expiresIn.toString())
+  queryParams.set('X-Amz-SignedHeaders', 'content-type;host')
+  
+  // Sort parameters alphabetically by key
+  queryParams.sort()
+  const canonicalQueryString = queryParams.toString()
+  
+  // Include both content-type and host in canonical headers (alphabetically ordered)
+  const canonicalHeaders = [
+    `content-type:${contentType}`,
+    `host:${bucket}.s3.${region}.amazonaws.com`
+  ].join('\n') + '\n'
+  
+  const signedHeaders = 'content-type;host'
   const payloadHash = 'UNSIGNED-PAYLOAD'
   
   const canonicalRequest = [
@@ -43,6 +66,8 @@ async function generatePresignedUrl(
     payloadHash
   ].join('\n')
   
+  console.log('[DEBUG] Canonical request:', canonicalRequest)
+  
   // Create string to sign
   const stringToSign = [
     algorithm,
@@ -51,6 +76,8 @@ async function generatePresignedUrl(
     await sha256(canonicalRequest)
   ].join('\n')
   
+  console.log('[DEBUG] String to sign:', stringToSign)
+  
   // Calculate signature
   const kDate = await hmacSha256(dateStamp, `AWS4${secretAccessKey}`)
   const kRegion = await hmacSha256(region, kDate)
@@ -58,14 +85,18 @@ async function generatePresignedUrl(
   const kSigning = await hmacSha256('aws4_request', kService)
   const signature = await hmacSha256(stringToSign, kSigning, 'hex')
   
+  console.log('[DEBUG] Generated signature:', signature)
+  
   // Build final URL
-  const url = new URL(`https://${bucket}.s3.${region}.amazonaws.com/${key}`)
+  const url = new URL(`https://${bucket}.s3.${region}.amazonaws.com/${encodedKey}`)
   url.searchParams.set('X-Amz-Algorithm', algorithm)
   url.searchParams.set('X-Amz-Credential', credential)
   url.searchParams.set('X-Amz-Date', dateString)
   url.searchParams.set('X-Amz-Expires', expiresIn.toString())
   url.searchParams.set('X-Amz-SignedHeaders', signedHeaders)
   url.searchParams.set('X-Amz-Signature', signature as string)
+  
+  console.log('[DEBUG] Final presigned URL:', url.toString())
   
   return url.toString()
 }
@@ -183,10 +214,23 @@ serve(async (req) => {
       })
     }
 
+    // Sanitize filename to avoid encoding issues
+    const sanitizedFileName = uploadData.fileName
+      .replace(/[^a-zA-Z0-9.-]/g, '_') // Replace special chars with underscore
+      .replace(/_{2,}/g, '_') // Replace multiple underscores with single
+      .replace(/^_|_$/g, '') // Remove leading/trailing underscores
+    
     // Generate unique file key
     const timestamp = Date.now()
-    const fileKey = `${user.id}/${timestamp}-${uploadData.fileName}`
-    const previewKey = `${user.id}/${timestamp}-${uploadData.fileName.split('.')[0]}`
+    const fileKey = `${user.id}/${timestamp}-${sanitizedFileName}`
+    const previewKey = `${user.id}/${timestamp}-${sanitizedFileName.split('.')[0]}`
+    
+    console.log('[DEBUG] File naming:', {
+      original: uploadData.fileName,
+      sanitized: sanitizedFileName,
+      fileKey,
+      previewKey
+    })
 
     // Create AWS S3 presigned URL for file upload
     const s3Bucket = Deno.env.get('S3_BUCKET_ORIGINALS')
