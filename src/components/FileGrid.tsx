@@ -94,16 +94,33 @@ const FileGrid = ({ files, loading }: FileGridProps) => {
         throw new Error(`File not accessible: ${testResponse.status} ${testResponse.statusText}`);
       }
 
-      // Create a temporary link element for download
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename || file.name;
-      link.target = '_blank';
-      
-      // Add to DOM, click, then remove
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // Check if we got a direct blob response (new download method)
+      if (url instanceof Blob || typeof url === 'object') {
+        // Handle blob download
+        const blob = url instanceof Blob ? url : new Blob([url]);
+        const downloadUrl = window.URL.createObjectURL(blob);
+        
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = filename || file.name;
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Clean up the blob URL
+        window.URL.revokeObjectURL(downloadUrl);
+      } else {
+        // Handle URL download (fallback)
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename || file.name;
+        link.target = '_blank';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
 
       toast({
         title: "Download Started",

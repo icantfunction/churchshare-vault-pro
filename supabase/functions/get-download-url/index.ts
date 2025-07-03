@@ -247,6 +247,44 @@ serve(async (req) => {
 
     console.log(`[DOWNLOAD] Generated ${cloudFrontBaseUrl ? 'CloudFront' : 'S3 presigned'} URL for ${fileKey}`)
 
+    // For downloads, we need to handle the Content-Disposition header
+    if (type === 'download') {
+      // For downloads, make a fetch request to get the file and set proper headers
+      try {
+        const fileResponse = await fetch(finalUrl);
+        if (!fileResponse.ok) {
+          throw new Error(`Failed to fetch file: ${fileResponse.status}`);
+        }
+        
+        const fileBlob = await fileResponse.blob();
+        
+        return new Response(fileBlob, {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/octet-stream',
+            'Content-Disposition': `attachment; filename="${file.file_name}"`,
+            'Cache-Control': 'no-cache'
+          },
+          status: 200,
+        });
+      } catch (error) {
+        console.error('[DOWNLOAD] Error fetching file for download:', error);
+        // Fallback to URL response if direct download fails
+        return new Response(
+          JSON.stringify({ 
+            url: finalUrl,
+            filename: file.file_name,
+            fileType: file.file_type
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          }
+        );
+      }
+    }
+
+    // For previews, return the URL
     return new Response(
       JSON.stringify({ 
         url: finalUrl,

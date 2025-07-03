@@ -290,7 +290,7 @@ serve(async (req) => {
 
     console.log('[DEBUG] File record created successfully:', fileData.id)
 
-    // Trigger processing for video files (using supabase.functions.invoke)
+    // Trigger processing for video files and thumbnail generation for images
     if (uploadData.fileType.startsWith('video/')) {
       EdgeRuntime.waitUntil(
         supabase.functions.invoke('process-file-metadata', {
@@ -304,6 +304,24 @@ serve(async (req) => {
             console.error('[UPLOAD] Processing trigger error:', error)
           } else {
             console.log('[UPLOAD] Processing triggered successfully')
+          }
+        })
+      )
+    } else if (uploadData.fileType.startsWith('image/')) {
+      // Trigger thumbnail generation for images
+      EdgeRuntime.waitUntil(
+        supabase.functions.invoke('generate-thumbnail', {
+          body: {
+            fileId: fileData.id,
+            fileKey,
+            previewKey,
+            fileType: uploadData.fileType
+          }
+        }).then(({ error }) => {
+          if (error) {
+            console.error('[UPLOAD] Thumbnail generation trigger error:', error)
+          } else {
+            console.log('[UPLOAD] Thumbnail generation triggered successfully')
           }
         })
       )

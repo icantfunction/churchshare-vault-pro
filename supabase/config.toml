@@ -13,3 +13,6 @@ port = 54323
 
 [functions]
 verify_jwt = true
+
+[functions.generate-thumbnail]
+verify_jwt = true
