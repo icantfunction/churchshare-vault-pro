@@ -136,8 +136,20 @@ const Upload = () => {
       fileCount: files.length,
       ministry,
       isDemoMode,
-      currentFileCount
+      currentFileCount,
+      profile: profile?.role,
+      hasProfile: !!profile
     });
+
+    if (!profile) {
+      console.error('[DEBUG] No user profile available for upload');
+      toast({
+        title: "Authentication Error",
+        description: "User profile not loaded. Please refresh and try again.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     setUploading(true);
     

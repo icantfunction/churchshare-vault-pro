@@ -55,8 +55,17 @@ const UploadProgress: React.FC<UploadProgressProps> = ({
       updateFileStatus(uploadFile.id, { status: 'uploading', progress: 0 });
 
       console.log('[DEBUG] Starting upload for:', uploadFile.file.name, 'ministry:', ministryId);
+      console.log('[DEBUG] File details:', {
+        name: uploadFile.file.name,
+        size: uploadFile.file.size,
+        type: uploadFile.file.type,
+        ministryId,
+        eventDate,
+        notes
+      });
 
       // Step 1: Prepare upload using Edge Function with ministry ID
+      console.log('[DEBUG] Calling upload-to-s3 edge function...');
       const { data: uploadData, error: prepError } = await supabase.functions.invoke('upload-to-s3', {
         body: {
           fileName: uploadFile.file.name,
@@ -70,6 +79,12 @@ const UploadProgress: React.FC<UploadProgressProps> = ({
 
       if (prepError) {
         console.error('[DEBUG] Upload preparation error:', prepError);
+        console.error('[DEBUG] Full error details:', {
+          message: prepError.message,
+          details: prepError.details,
+          hint: prepError.hint,
+          code: prepError.code
+        });
         throw prepError;
       }
 
@@ -80,6 +95,11 @@ const UploadProgress: React.FC<UploadProgressProps> = ({
       const uploadToS3 = async () => {
         console.log('[DEBUG] Uploading to S3:', uploadData.uploadUrl);
         
+        console.log('[DEBUG] Starting S3 upload with URL:', uploadData.uploadUrl);
+        console.log('[DEBUG] Upload headers:', {
+          'Content-Type': uploadFile.file.type,
+        });
+        
         const uploadResponse = await fetch(uploadData.uploadUrl, {
           method: 'PUT',
           body: uploadFile.file,
@@ -88,14 +108,21 @@ const UploadProgress: React.FC<UploadProgressProps> = ({
           },
         });
 
+        console.log('[DEBUG] S3 upload response:', {
+          status: uploadResponse.status,
+          statusText: uploadResponse.statusText,
+          headers: Array.from(uploadResponse.headers.entries())
+        });
+
         if (!uploadResponse.ok) {
           const errorText = await uploadResponse.text();
           console.error('[DEBUG] S3 upload failed:', {
             status: uploadResponse.status,
             statusText: uploadResponse.statusText,
-            errorText
+            errorText,
+            url: uploadData.uploadUrl
           });
-          throw new Error(`S3 upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`);
+          throw new Error(`S3 upload failed: ${uploadResponse.status} ${uploadResponse.statusText} - ${errorText}`);
         }
 
         console.log('[DEBUG] S3 upload successful');
