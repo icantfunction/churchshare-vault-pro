@@ -76,14 +76,30 @@ const UploadProgress: React.FC<UploadProgressProps> = ({
       console.log('[DEBUG] Upload data received:', uploadData);
       updateFileStatus(uploadFile.id, { progress: 25, fileId: uploadData.fileId });
 
-      // Step 2: Upload to S3 using presigned URL
-      // In a real implementation, this would upload the actual file to S3
-      // For now, we'll simulate the upload progress
+      // Step 2: Upload to S3 using the presigned URL
       const uploadToS3 = async () => {
-        for (let progress = 25; progress <= 90; progress += 5) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-          updateFileStatus(uploadFile.id, { progress });
+        console.log('[DEBUG] Uploading to S3:', uploadData.uploadUrl);
+        
+        const uploadResponse = await fetch(uploadData.uploadUrl, {
+          method: 'PUT',
+          body: uploadFile.file,
+          headers: {
+            'Content-Type': uploadFile.file.type,
+          },
+        });
+
+        if (!uploadResponse.ok) {
+          const errorText = await uploadResponse.text();
+          console.error('[DEBUG] S3 upload failed:', {
+            status: uploadResponse.status,
+            statusText: uploadResponse.statusText,
+            errorText
+          });
+          throw new Error(`S3 upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`);
         }
+
+        console.log('[DEBUG] S3 upload successful');
+        return uploadResponse;
       };
 
       await uploadToS3();

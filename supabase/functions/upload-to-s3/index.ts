@@ -2,6 +2,107 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.1'
 
+// AWS S3 Presigned URL generation for PUT requests
+async function generatePresignedUrl(
+  bucket: string,
+  key: string,
+  region: string,
+  accessKeyId: string,
+  secretAccessKey: string,
+  contentType: string,
+  expiresIn = 3600
+): Promise<string> {
+  const date = new Date()
+  const dateString = date.toISOString().replace(/[:\-]|\.\d{3}/g, '').slice(0, 15) + 'Z'
+  const dateStamp = dateString.slice(0, 8)
+  
+  const algorithm = 'AWS4-HMAC-SHA256'
+  const credential = `${accessKeyId}/${dateStamp}/${region}/s3/aws4_request`
+  
+  // Create canonical request
+  const method = 'PUT'
+  const canonicalUri = `/${key}`
+  const canonicalQueryString = [
+    `X-Amz-Algorithm=${algorithm}`,
+    `X-Amz-Credential=${encodeURIComponent(credential)}`,
+    `X-Amz-Date=${dateString}`,
+    `X-Amz-Expires=${expiresIn}`,
+    `X-Amz-SignedHeaders=host`
+  ].join('&')
+  
+  const canonicalHeaders = `host:${bucket}.s3.${region}.amazonaws.com\n`
+  const signedHeaders = 'host'
+  const payloadHash = 'UNSIGNED-PAYLOAD'
+  
+  const canonicalRequest = [
+    method,
+    canonicalUri,
+    canonicalQueryString,
+    canonicalHeaders,
+    signedHeaders,
+    payloadHash
+  ].join('\n')
+  
+  // Create string to sign
+  const stringToSign = [
+    algorithm,
+    dateString,
+    `${dateStamp}/${region}/s3/aws4_request`,
+    await sha256(canonicalRequest)
+  ].join('\n')
+  
+  // Calculate signature
+  const kDate = await hmacSha256(dateStamp, `AWS4${secretAccessKey}`)
+  const kRegion = await hmacSha256(region, kDate)
+  const kService = await hmacSha256('s3', kRegion)
+  const kSigning = await hmacSha256('aws4_request', kService)
+  const signature = await hmacSha256(stringToSign, kSigning, 'hex')
+  
+  // Build final URL
+  const url = new URL(`https://${bucket}.s3.${region}.amazonaws.com/${key}`)
+  url.searchParams.set('X-Amz-Algorithm', algorithm)
+  url.searchParams.set('X-Amz-Credential', credential)
+  url.searchParams.set('X-Amz-Date', dateString)
+  url.searchParams.set('X-Amz-Expires', expiresIn.toString())
+  url.searchParams.set('X-Amz-SignedHeaders', signedHeaders)
+  url.searchParams.set('X-Amz-Signature', signature as string)
+  
+  return url.toString()
+}
+
+async function sha256(message: string): Promise<string> {
+  const encoder = new TextEncoder()
+  const data = encoder.encode(message)
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+  const hashArray = new Uint8Array(hashBuffer)
+  return Array.from(hashArray).map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+async function hmacSha256(message: string, key: string | Uint8Array, encoding: 'hex' | 'binary' = 'binary'): Promise<string | Uint8Array> {
+  const encoder = new TextEncoder()
+  const keyData = typeof key === 'string' ? encoder.encode(key) : key
+  const messageData = encoder.encode(message)
+  
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    keyData,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  )
+  
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData)
+  const signatureArray = new Uint8Array(signature)
+  
+  if (encoding === 'hex') {
+    return Array.from(signatureArray)
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('')
+  }
+  
+  return signatureArray
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -87,12 +188,32 @@ serve(async (req) => {
     const fileKey = `${user.id}/${timestamp}-${uploadData.fileName}`
     const previewKey = `${user.id}/${timestamp}-${uploadData.fileName.split('.')[0]}`
 
-    // Create AWS S3 presigned URL for multipart upload
+    // Create AWS S3 presigned URL for file upload
     const s3Bucket = Deno.env.get('S3_BUCKET_ORIGINALS')
     const awsRegion = Deno.env.get('AWS_REGION')
+    const awsAccessKeyId = Deno.env.get('AWS_ACCESS_KEY_ID')
+    const awsSecretAccessKey = Deno.env.get('AWS_SECRET_ACCESS_KEY')
     
-    // For now, return a simple presigned URL (in production, implement multipart upload)
-    const presignedUrl = `https://${s3Bucket}.s3.${awsRegion}.amazonaws.com/${fileKey}`
+    console.log('[DEBUG] AWS Config check:', {
+      bucket: s3Bucket ? 'configured' : 'missing',
+      region: awsRegion ? 'configured' : 'missing',
+      accessKey: awsAccessKeyId ? 'configured' : 'missing',
+      secretKey: awsSecretAccessKey ? 'configured' : 'missing'
+    })
+
+    if (!s3Bucket || !awsRegion || !awsAccessKeyId || !awsSecretAccessKey) {
+      throw new Error('Missing required AWS configuration')
+    }
+
+    // Generate presigned URL for S3 upload
+    const uploadUrl = await generatePresignedUrl(
+      s3Bucket,
+      fileKey,
+      awsRegion,
+      awsAccessKeyId,
+      awsSecretAccessKey,
+      uploadData.fileType
+    )
 
     // Handle empty or invalid event dates
     let eventDateValue = null;
@@ -145,10 +266,10 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       fileId: fileData.id,
-      presignedUrl,
+      presignedUrl: uploadUrl,
       fileKey,
       previewKey,
-      uploadUrl: `https://s3.${awsRegion}.amazonaws.com/${s3Bucket}/${fileKey}`
+      uploadUrl
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
