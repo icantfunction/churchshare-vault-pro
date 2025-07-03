@@ -13,6 +13,9 @@ import { useMinistries } from "@/hooks/useMinistries";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "react-router-dom";
 import UploadProgress from "@/components/UploadProgress";
+import FileRenameList from "@/components/FileRenameList";
+import { FileRename, createFileRename } from "@/utils/fileNameUtils";
+import { formatFileSize } from "@/utils/formatFileSize";
 
 interface FormErrors {
   ministry?: string;
@@ -20,7 +23,7 @@ interface FormErrors {
 }
 
 const Upload = () => {
-  const [files, setFiles] = useState<File[]>([]);
+  const [fileRenames, setFileRenames] = useState<FileRename[]>([]);
   const [uploading, setUploading] = useState(false);
   const [ministry, setMinistry] = useState("");
   const [eventDate, setEventDate] = useState("");
@@ -51,12 +54,12 @@ const Upload = () => {
     const droppedFiles = Array.from(e.dataTransfer.files);
     
     if (isDemoMode) {
-      if (currentFileCount + files.length + droppedFiles.length > 6) {
+      if (currentFileCount + fileRenames.length + droppedFiles.length > 6) {
         console.log('[DEBUG] Drop rejected - would exceed limit:', {
           current: currentFileCount,
-          pending: files.length,
+          pending: fileRenames.length,
           dropped: droppedFiles.length,
-          total: currentFileCount + files.length + droppedFiles.length
+          total: currentFileCount + fileRenames.length + droppedFiles.length
         });
         toast({
           title: "Demo Limit Reached",
@@ -68,23 +71,24 @@ const Upload = () => {
     }
     
     console.log('[DEBUG] Files dropped successfully:', droppedFiles.length);
-    setFiles(prev => [...prev, ...droppedFiles]);
+    const newFileRenames = droppedFiles.map(file => createFileRename(file));
+    setFileRenames(prev => [...prev, ...newFileRenames]);
     if (formErrors.files) {
       setFormErrors(prev => ({ ...prev, files: undefined }));
     }
-  }, [files.length, currentFileCount, isDemoMode, toast, formErrors.files]);
+  }, [fileRenames.length, currentFileCount, isDemoMode, toast, formErrors.files]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files);
       
       if (isDemoMode) {
-        if (currentFileCount + files.length + selectedFiles.length > 6) {
+        if (currentFileCount + fileRenames.length + selectedFiles.length > 6) {
           console.log('[DEBUG] File selection rejected - would exceed limit:', {
             current: currentFileCount,
-            pending: files.length,
+            pending: fileRenames.length,
             selected: selectedFiles.length,
-            total: currentFileCount + files.length + selectedFiles.length
+            total: currentFileCount + fileRenames.length + selectedFiles.length
           });
           toast({
             title: "Demo Limit Reached", 
@@ -96,15 +100,16 @@ const Upload = () => {
       }
       
       console.log('[DEBUG] Files selected successfully:', selectedFiles.length);
-      setFiles(prev => [...prev, ...selectedFiles]);
+      const newFileRenames = selectedFiles.map(file => createFileRename(file));
+      setFileRenames(prev => [...prev, ...newFileRenames]);
       if (formErrors.files) {
         setFormErrors(prev => ({ ...prev, files: undefined }));
       }
     }
   };
 
-  const removeFile = (index: number) => {
-    setFiles(prev => prev.filter((_, i) => i !== index));
+  const removeFileRename = (id: string) => {
+    setFileRenames(prev => prev.filter(fr => fr.id !== id));
   };
 
   const validateForm = () => {
@@ -114,8 +119,14 @@ const Upload = () => {
       errors.ministry = "Please select a ministry";
     }
 
-    if (files.length === 0) {
+    if (fileRenames.length === 0) {
       errors.files = "Please select at least one file to upload";
+    }
+
+    // Check if all filenames are valid
+    const invalidFiles = fileRenames.filter(fr => !fr.isValid);
+    if (invalidFiles.length > 0) {
+      errors.files = "Please fix invalid filenames before uploading";
     }
 
     setFormErrors(errors);
@@ -133,7 +144,7 @@ const Upload = () => {
     }
 
     console.log('[DEBUG] Starting upload process:', {
-      fileCount: files.length,
+      fileCount: fileRenames.length,
       ministry,
       isDemoMode,
       currentFileCount,
@@ -155,18 +166,23 @@ const Upload = () => {
     
     try {
       if (isDemoMode) {
-        // Demo mode: use addDemoFile
-        for (const file of files) {
-          console.log('[DEBUG] Uploading file to demo:', file.name, 'ministry:', ministry);
-          await addDemoFile(file, ministry, eventDate, notes);
+        // Demo mode: use addDemoFile with custom filenames
+        for (const fileRename of fileRenames) {
+          console.log('[DEBUG] Uploading file to demo:', fileRename.customName, 'ministry:', ministry);
+          // Create a new File object with the custom name
+          const renamedFile = new File([fileRename.file], fileRename.customName, {
+            type: fileRename.file.type,
+            lastModified: fileRename.file.lastModified
+          });
+          await addDemoFile(renamedFile, ministry, eventDate, notes);
         }
         
         toast({
           title: "Demo Upload Complete!",
-          description: `Successfully added ${files.length} files to demo`,
+          description: `Successfully added ${fileRenames.length} files to demo`,
         });
 
-        setFiles([]);
+        setFileRenames([]);
         setUploading(false);
         setFormErrors({});
       } else {
@@ -193,7 +209,7 @@ const Upload = () => {
 
   const handleUploadComplete = (fileIds: string[]) => {
     console.log('[DEBUG] Upload completed:', fileIds);
-    setFiles([]);
+    setFileRenames([]);
     setShowProgress(false);
     setUploading(false);
     setFormErrors({});
@@ -229,7 +245,7 @@ const Upload = () => {
         <Header />
         <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <UploadProgress 
-            files={files} 
+            files={fileRenames.map(fr => ({ ...fr.file, name: fr.customName }))} 
             ministryId={ministry}
             eventDate={eventDate}
             notes={notes}
@@ -258,7 +274,7 @@ const Upload = () => {
                 <h1 className="text-2xl font-bold text-primary">ChurchShare Pro - Upload</h1>
               </div>
               <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-600">Demo: {currentFileCount + files.length}/6 files</span>
+                <span className="text-sm text-gray-600">Demo: {currentFileCount + fileRenames.length}/6 files</span>
                 <Button asChild>
                   <Link to="/auth">Sign Up for Full Access</Link>
                 </Button>
@@ -367,7 +383,7 @@ const Upload = () => {
                 </h3>
                 <p className={`mb-4 ${formErrors.files ? 'text-red-600' : 'text-gray-600'}`}>
                   Or click to browse and select files
-                  {isDemoMode && ` (${currentFileCount + files.length}/6 files)`}
+                  {isDemoMode && ` (${currentFileCount + fileRenames.length}/6 files)`}
                 </p>
                 <input
                   type="file"
@@ -393,57 +409,40 @@ const Upload = () => {
             </CardContent>
           </Card>
 
-          {/* File List */}
-          {files.length > 0 && (
-            <Card className="shadow-lg border-0">
-              <CardHeader>
-                <CardTitle>Selected Files ({files.length})</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {files.map((file, index) => (
-                    <div key={index} className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
-                      {getFileIcon(file)}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{file.name}</p>
-                        <p className="text-sm text-gray-600">{formatFileSize(file.size)}</p>
-                      </div>
-                      {!uploading && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeFile(index)}
-                          className="text-gray-400 hover:text-red-500"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-6 flex gap-4">
-                  <Button
-                    onClick={handleUpload}
-                    disabled={uploading || ministriesLoading || availableMinistries.length === 0}
-                    className="flex-1 h-12 rounded-xl bg-primary hover:bg-primary/90"
-                  >
-                    {uploading ? (isDemoMode ? "Adding to Demo..." : "Starting Upload...") : (isDemoMode ? "Add to Demo" : "Upload Files")}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setFiles([]);
-                      setFormErrors(prev => ({ ...prev, files: undefined }));
-                    }}
-                    disabled={uploading}
-                    className="h-12 rounded-xl"
-                  >
-                    Clear All
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+          {/* File Rename List */}
+          {fileRenames.length > 0 && (
+            <>
+              <FileRenameList 
+                fileRenames={fileRenames}
+                onFileRenamesChange={setFileRenames}
+                onRemoveFile={removeFileRename}
+              />
+              
+              <Card className="shadow-lg border-0">
+                <CardContent className="pt-6">
+                  <div className="flex gap-4">
+                    <Button
+                      onClick={handleUpload}
+                      disabled={uploading || ministriesLoading || availableMinistries.length === 0 || !fileRenames.every(fr => fr.isValid)}
+                      className="flex-1 h-12 rounded-xl bg-primary hover:bg-primary/90"
+                    >
+                      {uploading ? (isDemoMode ? "Adding to Demo..." : "Starting Upload...") : (isDemoMode ? "Add to Demo" : "Upload Files")}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setFileRenames([]);
+                        setFormErrors(prev => ({ ...prev, files: undefined }));
+                      }}
+                      disabled={uploading}
+                      className="h-12 rounded-xl"
+                    >
+                      Clear All
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
           )}
         </div>
       </main>

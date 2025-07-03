@@ -68,7 +68,7 @@ const UploadProgress: React.FC<UploadProgressProps> = ({
       console.log('[DEBUG] Calling upload-to-s3 edge function...');
       const { data: uploadData, error: prepError } = await supabase.functions.invoke('upload-to-s3', {
         body: {
-          fileName: uploadFile.file.name,
+          fileName: uploadFile.file.name, // This will be the custom filename from FileRename
           fileSize: uploadFile.file.size,
           fileType: uploadFile.file.type,
           ministryId: ministryId,
