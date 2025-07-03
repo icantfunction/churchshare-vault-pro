@@ -88,39 +88,15 @@ const FileGrid = ({ files, loading }: FileGridProps) => {
 
       console.log('[DEBUG-DOWNLOAD] Got download URL:', url);
 
-      // Test if URL is accessible
-      const testResponse = await fetch(url, { method: 'HEAD' });
-      if (!testResponse.ok) {
-        throw new Error(`File not accessible: ${testResponse.status} ${testResponse.statusText}`);
-      }
-
-      // Check if we got a direct blob response (new download method)
-      if (url instanceof Blob || typeof url === 'object') {
-        // Handle blob download
-        const blob = url instanceof Blob ? url : new Blob([url]);
-        const downloadUrl = window.URL.createObjectURL(blob);
-        
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.download = filename || file.name;
-        
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        // Clean up the blob URL
-        window.URL.revokeObjectURL(downloadUrl);
-      } else {
-        // Handle URL download (fallback)
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename || file.name;
-        link.target = '_blank';
-        
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
+      // Create download link with proper attributes
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename || file.name;
+      link.style.display = 'none';
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
 
       toast({
         title: "Download Started",

@@ -185,37 +185,14 @@ serve(async (req) => {
     
     console.log(`[THUMBNAIL] Processing: ${fileKey} -> ${thumbnailKey}`)
 
-    // For this initial implementation, we'll copy the original to preview bucket
-    // In production, you would download, resize, and upload the thumbnail
+    // For now, use the original file as the preview/thumbnail
+    // This will show the full image as a "thumbnail" until we implement proper resizing
     try {
-      // Get the original file URL (this would normally be a presigned GET URL)
-      const originalUrl = `https://${originsBucket}.s3.${region}.amazonaws.com/${fileKey}`
-      
-      // Download the original image
-      console.log(`[THUMBNAIL] Downloading original from: ${originalUrl}`)
-      
-      // For now, we'll create a placeholder thumbnail by copying the original
-      // In production, you would resize the image here
-      
-      // Generate upload URL for thumbnail
-      const thumbnailUploadUrl = await generateThumbnailUploadUrl(
-        previewsBucket,
-        thumbnailKey,
-        region,
-        accessKeyId,
-        secretAccessKey
-      )
-
-      console.log(`[THUMBNAIL] Generated upload URL for thumbnail`)
-
-      // For this implementation, we'll just update the database to indicate thumbnail creation
-      // In production, you would actually process and upload the thumbnail
-      
-      // Update the file record with the thumbnail path
+      // Update the file record with the correct preview key (use original file as thumbnail)
       const { error: updateError } = await supabase
         .from('files')
         .update({
-          preview_key: thumbnailKey,
+          preview_key: fileKey, // Use the original file as preview for now
           updated_at: new Date().toISOString()
         })
         .eq('id', fileId)
@@ -225,13 +202,13 @@ serve(async (req) => {
         throw updateError
       }
 
-      console.log(`[THUMBNAIL] Successfully created thumbnail: ${thumbnailKey}`)
+      console.log(`[THUMBNAIL] Successfully set preview key: ${fileKey}`)
 
       return new Response(JSON.stringify({
         success: true,
         fileId,
-        thumbnailKey,
-        message: 'Thumbnail generated successfully'
+        thumbnailKey: fileKey,
+        message: 'Preview configured successfully'
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
