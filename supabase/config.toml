@@ -1,1 +1,15 @@
 project_id = "ostnuphowzvtdebdbnwo"
+
+[api]
+enabled = true
+port = 54321
+
+[db]
+port = 54322
+
+[studio]
+enabled = true
+port = 54323
+
+[functions]
+verify_jwt = true
