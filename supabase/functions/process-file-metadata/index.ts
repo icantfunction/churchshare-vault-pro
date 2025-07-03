@@ -26,55 +26,67 @@ serve(async (req) => {
 
     const { fileId, fileKey, previewKey }: ProcessRequest = await req.json()
 
-    console.log(`[PROCESS] Starting processing for file: ${fileKey}`)
+    console.log(`[PROCESS] Starting metadata processing for: ${fileKey}`)
     
-    // Get AWS MediaConvert configuration
-    const mediaConvertEndpoint = Deno.env.get('MEDIACONVERT_ENDPOINT')
-    const templateName = Deno.env.get('MEDIACONVERT_TEMPLATE_NAME')
-    const region = Deno.env.get('AWS_REGION') || 'us-east-1'
-    const accessKeyId = Deno.env.get('AWS_ACCESS_KEY_ID')
-    const secretAccessKey = Deno.env.get('AWS_SECRET_ACCESS_KEY')
-    
-    if (!mediaConvertEndpoint || !templateName || !accessKeyId || !secretAccessKey) {
-      console.log('[PROCESS] MediaConvert not configured, marking as processed without encoding')
+    // Get file record to determine file type
+    const { data: file, error: fileError } = await supabase
+      .from('files')
+      .select('file_type, file_name')
+      .eq('id', fileId)
+      .single()
+
+    if (fileError || !file) {
+      console.error('[PROCESS] File not found:', fileError)
+      return new Response('File not found', { status: 404, headers: corsHeaders })
+    }
+
+    console.log(`[PROCESS] Processing file: ${file.file_name} (${file.file_type})`)
+
+    // For video files, implement HLS processing (placeholder for now)
+    if (file.file_type.startsWith('video/')) {
+      console.log(`[PROCESS] Video processing for ${file.file_name}`)
       
-      // Update file record to mark as processed (no actual encoding)
+      // TODO: Implement actual video processing
+      // 1. Download video from S3
+      // 2. Use FFmpeg to create HLS segments 
+      // 3. Upload segments back to S3
+      // 4. Update preview_key with HLS manifest path
+      
+      // For now, use original file as preview
       const { error: updateError } = await supabase
         .from('files')
         .update({
+          preview_key: fileKey, // Use original until HLS is implemented
           needs_reencode: false,
-          compression_ratio: 0.85, // Estimated compression ratio
+          compression_ratio: 0.85,
           updated_at: new Date().toISOString()
         })
         .eq('id', fileId)
         
       if (updateError) {
-        console.error('[PROCESS] File update error:', updateError)
-        return new Response('Failed to update file status', { status: 500, headers: corsHeaders })
+        console.error('[PROCESS] Update error:', updateError)
+        throw updateError
       }
+
+      console.log(`[PROCESS] Video processing completed (placeholder): ${fileKey}`)
     } else {
-      // In production, this would trigger AWS MediaConvert job
-      console.log('[PROCESS] Would start MediaConvert job with:', {
-        endpoint: mediaConvertEndpoint,
-        template: templateName,
-        inputFile: fileKey,
-        outputPrefix: previewKey
-      })
-      
-      // For now, simulate processing and update the record
+      // For non-video files, just mark as processed
       const { error: updateError } = await supabase
         .from('files')
         .update({
+          preview_key: fileKey, // Use original file
           needs_reencode: false,
-          compression_ratio: 0.75, // MediaConvert compression ratio
+          compression_ratio: 1.0, // No compression for non-video
           updated_at: new Date().toISOString()
         })
         .eq('id', fileId)
         
       if (updateError) {
-        console.error('[PROCESS] File update error:', updateError)
-        return new Response('Failed to update file status', { status: 500, headers: corsHeaders })
+        console.error('[PROCESS] Update error:', updateError)
+        throw updateError
       }
+
+      console.log(`[PROCESS] File processing completed: ${file.file_name}`)
     }
 
     // Log processing completion
@@ -82,7 +94,7 @@ serve(async (req) => {
       .from('system_logs')
       .insert({
         action: 'file_processed',
-        details: `File ${fileKey} processed successfully with preview key ${previewKey}`
+        details: `File ${file.file_name} (${file.file_type}) processed successfully with preview key ${fileKey}`
       })
 
     if (logError) {

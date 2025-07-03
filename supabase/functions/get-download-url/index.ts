@@ -210,10 +210,8 @@ serve(async (req) => {
       return new Response('File URL not available', { status: 404, headers: corsHeaders })
     }
 
-    // Get AWS credentials and config
-    const bucketName = type === 'preview' 
-      ? Deno.env.get('S3_BUCKET_PREVIEWS')
-      : Deno.env.get('S3_BUCKET_ORIGINALS')
+    // Get AWS credentials and config - Use same bucket for both for now
+    const bucketName = Deno.env.get('S3_BUCKET_ORIGINALS') // Use originals bucket for both
     const region = Deno.env.get('AWS_REGION') || 'us-east-1'
     const accessKeyId = Deno.env.get('AWS_ACCESS_KEY_ID')
     const secretAccessKey = Deno.env.get('AWS_SECRET_ACCESS_KEY')
@@ -225,10 +223,8 @@ serve(async (req) => {
 
     let finalUrl: string;
     
-    // Try CloudFront first, fallback to S3 presigned URL
-    const cloudFrontBaseUrl = type === 'preview' 
-      ? Deno.env.get('CLOUDFRONT_URL_PREVIEWS')
-      : Deno.env.get('CLOUDFRONT_URL_ORIGINALS')
+    // Try CloudFront first, fallback to S3 presigned URL - Use originals for both
+    const cloudFrontBaseUrl = Deno.env.get('CLOUDFRONT_URL_ORIGINALS')
     
     if (cloudFrontBaseUrl) {
       // Use CloudFront distribution (public access, no signing needed for now)

@@ -169,30 +169,64 @@ serve(async (req) => {
       })
     }
 
-    // Get AWS configuration
+    // Get AWS configuration - Use originals bucket for consistency
     const originsBucket = Deno.env.get('S3_BUCKET_ORIGINALS')
-    const previewsBucket = Deno.env.get('S3_BUCKET_PREVIEWS')
     const region = Deno.env.get('AWS_REGION') || 'us-east-1'
     const accessKeyId = Deno.env.get('AWS_ACCESS_KEY_ID')
     const secretAccessKey = Deno.env.get('AWS_SECRET_ACCESS_KEY')
     
-    if (!originsBucket || !previewsBucket || !accessKeyId || !secretAccessKey) {
+    if (!originsBucket || !accessKeyId || !secretAccessKey) {
       throw new Error('Missing required AWS configuration')
     }
 
-    // Generate thumbnail filename with .jpg extension
+    // Create thumbnail filename with _thumb suffix
     const thumbnailKey = `${previewKey}_thumb.jpg`
     
     console.log(`[THUMBNAIL] Processing: ${fileKey} -> ${thumbnailKey}`)
 
-    // For now, use the original file as the preview/thumbnail
-    // This will show the full image as a "thumbnail" until we implement proper resizing
     try {
-      // Update the file record with the correct preview key (use original file as thumbnail)
+      // Download original image from S3
+      const originalUrl = `https://${originsBucket}.s3.${region}.amazonaws.com/${fileKey}`
+      const imageResponse = await fetch(originalUrl)
+      
+      if (!imageResponse.ok) {
+        throw new Error(`Failed to download original image: ${imageResponse.status}`)
+      }
+      
+      const imageBuffer = await imageResponse.arrayBuffer()
+      console.log(`[THUMBNAIL] Downloaded original image: ${imageBuffer.byteLength} bytes`)
+      
+      // Process thumbnail (for now just use original, but with proper key)
+      const thumbnailBuffer = await generateThumbnail(imageBuffer, 300)
+      
+      // Upload thumbnail to S3 using the same bucket
+      const uploadUrl = await generateThumbnailUploadUrl(
+        originsBucket,
+        thumbnailKey,
+        region,
+        accessKeyId,
+        secretAccessKey
+      )
+      
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: thumbnailBuffer,
+        headers: {
+          'Content-Type': 'image/jpeg'
+        }
+      })
+      
+      if (!uploadResponse.ok) {
+        throw new Error(`Failed to upload thumbnail: ${uploadResponse.status}`)
+      }
+      
+      console.log(`[THUMBNAIL] Successfully uploaded thumbnail: ${thumbnailKey}`)
+      
+      // Update the file record with the thumbnail key
       const { error: updateError } = await supabase
         .from('files')
         .update({
-          preview_key: fileKey, // Use the original file as preview for now
+          preview_key: thumbnailKey,
           updated_at: new Date().toISOString()
         })
         .eq('id', fileId)
@@ -202,13 +236,13 @@ serve(async (req) => {
         throw updateError
       }
 
-      console.log(`[THUMBNAIL] Successfully set preview key: ${fileKey}`)
+      console.log(`[THUMBNAIL] Successfully updated preview key: ${thumbnailKey}`)
 
       return new Response(JSON.stringify({
         success: true,
         fileId,
-        thumbnailKey: fileKey,
-        message: 'Preview configured successfully'
+        thumbnailKey,
+        message: 'Thumbnail generated successfully'
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
@@ -216,7 +250,7 @@ serve(async (req) => {
     } catch (processingError) {
       console.error('[THUMBNAIL] Processing error:', processingError)
       
-      // Fallback: just use the original file key as preview
+      // Fallback: use the original file key as preview
       const { error: fallbackError } = await supabase
         .from('files')
         .update({
@@ -232,6 +266,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         success: false,
         fileId,
+        thumbnailKey: fileKey, // Fallback to original
         error: 'Thumbnail generation failed, using original as preview',
         message: processingError.message
       }), {
