@@ -175,12 +175,28 @@ serve(async (req) => {
 
     if (!supabaseUrl || !supabaseServiceKey) {
       console.error('[UPLOAD] Missing Supabase configuration')
-      return new Response('Missing Supabase configuration', { status: 500, headers: corsHeaders })
+      return new Response(JSON.stringify({
+        error: 'Server configuration error',
+        message: 'Missing Supabase configuration. Please check edge function environment variables.',
+        code: 'SUPABASE_CONFIG_MISSING'
+      }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
     if (!s3Bucket || !awsRegion || !awsAccessKeyId || !awsSecretAccessKey) {
       console.error('[UPLOAD] Missing AWS configuration')
-      return new Response('Missing AWS configuration', { status: 500, headers: corsHeaders })
+      const missingVars = []
+      if (!s3Bucket) missingVars.push('S3_BUCKET_ORIGINALS')
+      if (!awsRegion) missingVars.push('AWS_REGION')
+      if (!awsAccessKeyId) missingVars.push('AWS_ACCESS_KEY_ID')
+      if (!awsSecretAccessKey) missingVars.push('AWS_SECRET_ACCESS_KEY')
+      
+      return new Response(JSON.stringify({
+        error: 'AWS configuration error',
+        message: `Missing required AWS environment variables: ${missingVars.join(', ')}. Please configure these in Supabase Edge Function secrets.`,
+        code: 'AWS_CONFIG_MISSING',
+        missingVariables: missingVars,
+        setupGuide: 'https://supabase.com/dashboard/project/eb2a9d7f-e4d4-466f-95b8-4cea2bee63bf/settings/functions'
+      }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
