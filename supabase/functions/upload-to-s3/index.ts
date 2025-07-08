@@ -383,45 +383,7 @@ serve(async (req) => {
       ministryId: fileData.ministry_id
     })
 
-    // Trigger processing for video files and thumbnail generation for images
-    if (uploadData.fileType.startsWith('video/')) {
-      EdgeRuntime.waitUntil(
-        supabase.functions.invoke('process-file-metadata', {
-          body: {
-            fileId: fileData.id,
-            fileKey,
-            previewKey
-          }
-        }).then(({ error }) => {
-          if (error) {
-            console.error('[UPLOAD] Processing trigger error:', error)
-          } else {
-            console.log('[UPLOAD] Processing triggered successfully')
-          }
-        })
-      )
-    } else if (uploadData.fileType.startsWith('image/')) {
-      // Trigger thumbnail generation for images
-      console.log('[UPLOAD] Starting thumbnail generation for:', uploadData.fileName, 'Type:', uploadData.fileType);
-      EdgeRuntime.waitUntil(
-        supabase.functions.invoke('generate-thumbnail', {
-          body: {
-            fileId: fileData.id,
-            fileKey,
-            previewKey,
-            fileType: uploadData.fileType
-          }
-        }).then(({ data, error }) => {
-          if (error) {
-            console.error('[UPLOAD] Thumbnail generation trigger error:', error)
-          } else {
-            console.log('[UPLOAD] Thumbnail generation triggered successfully:', data)
-          }
-        }).catch(err => {
-          console.error('[UPLOAD] Thumbnail generation invocation failed:', err)
-        })
-      )
-    }
+    console.log('[UPLOAD] File upload preparation completed. Processing will be triggered by client after S3 upload completes.')
 
     console.log('[UPLOAD] Upload preparation completed successfully:', {
       fileId: fileData.id,

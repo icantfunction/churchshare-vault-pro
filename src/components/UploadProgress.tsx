@@ -130,10 +130,27 @@ const UploadProgress: React.FC<UploadProgressProps> = ({
       };
 
       await uploadToS3();
-      updateFileStatus(uploadFile.id, { progress: 90, status: 'processing' });
+      updateFileStatus(uploadFile.id, { progress: 70, status: 'processing' });
 
-      // Step 3: Complete processing
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Step 3: Trigger post-upload processing now that file is in S3
+      console.log('[DEBUG] Triggering post-upload processing...');
+      const { data: processingData, error: processingError } = await supabase.functions.invoke('trigger-post-upload-processing', {
+        body: {
+          fileId: uploadData.fileId,
+          fileKey: uploadData.fileKey,
+          previewKey: uploadData.previewKey,
+          fileType: uploadFile.file.type
+        }
+      });
+
+      if (processingError) {
+        console.error('[DEBUG] Post-upload processing error:', processingError);
+        // Don't fail the upload for processing errors, just log them
+        console.warn('[DEBUG] Upload succeeded but processing failed:', processingError.message);
+      } else {
+        console.log('[DEBUG] Post-upload processing triggered successfully:', processingData);
+      }
+
       updateFileStatus(uploadFile.id, { progress: 100, status: 'completed' });
 
       console.log('[DEBUG] Upload completed for:', uploadFile.file.name);
