@@ -274,12 +274,20 @@ serve(async (req) => {
         message: profileError.message,
         details: profileError.details
       })
-      return new Response('Failed to fetch user profile', { status: 500, headers: corsHeaders })
+      return new Response(JSON.stringify({
+        error: 'Profile fetch failed',
+        message: 'Could not retrieve user profile. Please ensure you have completed user registration.',
+        code: 'PROFILE_FETCH_ERROR'
+      }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
     if (!userProfile) {
       console.error('[UPLOAD] User profile not found for user:', user.id)
-      return new Response('User profile not found', { status: 404, headers: corsHeaders })
+      return new Response(JSON.stringify({
+        error: 'Profile not found',
+        message: 'User profile not found. Please complete user registration first.',
+        code: 'PROFILE_NOT_FOUND'
+      }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
     console.log('[UPLOAD] User profile retrieved:', {
@@ -289,24 +297,57 @@ serve(async (req) => {
       uploadMinistry: uploadData.ministryId
     })
 
-    // Check if user can upload to the specified ministry
-    const canUploadToMinistry = 
-      userProfile.role === 'Director' ||
-      userProfile.role === 'SuperOrg' ||
-      userProfile.role === 'Admin' ||
-      userProfile.ministry_id === uploadData.ministryId
+    // Enhanced permission check with Director-specific logic
+    const isDirectorOrAdmin = ['Director', 'SuperOrg', 'Admin'].includes(userProfile.role)
+    const canUploadToMinistry = isDirectorOrAdmin || userProfile.ministry_id === uploadData.ministryId
 
     console.log('[UPLOAD] Ministry permission check:', {
       userRole: userProfile.role,
+      isDirectorOrAdmin,
+      userMinistry: userProfile.ministry_id,
+      requestedMinistry: uploadData.ministryId,
       canUpload: canUploadToMinistry,
-      reason: canUploadToMinistry ? 'Authorized' : 'Not authorized for this ministry'
+      reason: canUploadToMinistry ? 
+        (isDirectorOrAdmin ? 'Director/Admin can upload to any ministry' : 'User ministry matches') : 
+        'Not authorized for this ministry'
     })
 
     if (!canUploadToMinistry) {
       console.error('[UPLOAD] Upload denied - insufficient permissions')
-      return new Response('You do not have permission to upload to this ministry', { 
-        status: 403, 
-        headers: corsHeaders 
+      return new Response(JSON.stringify({
+        error: 'Permission denied',
+        message: isDirectorOrAdmin ? 
+          'Directors can upload to any ministry. Please select a ministry from the dropdown.' :
+          `You can only upload to your assigned ministry. Your ministry: ${userProfile.ministry_id || 'None'}, Requested: ${uploadData.ministryId}`,
+        code: 'INSUFFICIENT_PERMISSIONS',
+        userRole: userProfile.role,
+        userMinistry: userProfile.ministry_id,
+        requestedMinistry: uploadData.ministryId
+      }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    // Special handling for Directors - verify ministry exists
+    if (isDirectorOrAdmin) {
+      console.log('[UPLOAD] Director/Admin upload - verifying ministry exists')
+      const { data: ministry, error: ministryError } = await supabase
+        .from('ministries')
+        .select('id, name')
+        .eq('id', uploadData.ministryId)
+        .single()
+
+      if (ministryError || !ministry) {
+        console.error('[UPLOAD] Ministry not found:', uploadData.ministryId)
+        return new Response(JSON.stringify({
+          error: 'Ministry not found',
+          message: `The selected ministry (${uploadData.ministryId}) does not exist. Please select a valid ministry.`,
+          code: 'MINISTRY_NOT_FOUND',
+          requestedMinistry: uploadData.ministryId
+        }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+
+      console.log('[UPLOAD] Ministry verified:', {
+        ministryId: ministry.id,
+        ministryName: ministry.name
       })
     }
 

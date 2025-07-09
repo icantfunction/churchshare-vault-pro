@@ -86,21 +86,66 @@ const UploadProgress: React.FC<UploadProgressProps> = ({
           code: prepError.code
         });
         
-        // Enhanced error handling with detailed messages
         let userMessage = 'Upload failed';
         
-        if (prepError.message.includes('AWS configuration error')) {
-          userMessage = 'Server configuration issue: Missing AWS credentials. Please contact support.';
-        } else if (prepError.message.includes('Missing authorization')) {
-          userMessage = 'Authentication error: Please log out and log back in.';
-        } else if (prepError.message.includes('permission')) {
-          userMessage = 'Permission denied: You cannot upload to this ministry.';
-        } else if (prepError.message.includes('Ministry ID is required')) {
-          userMessage = 'Please select a ministry before uploading files.';
-        } else if (prepError.message.includes('File name is required')) {
-          userMessage = 'Invalid file: File name is required.';
-        } else {
-          userMessage = prepError.message || 'Upload preparation failed';
+        try {
+          // Try to parse structured error response from edge function
+          let errorData = prepError;
+          
+          // If the error contains JSON, try to parse it
+          if (typeof prepError.message === 'string' && prepError.message.includes('{')) {
+            try {
+              const jsonStart = prepError.message.indexOf('{');
+              const jsonPart = prepError.message.substring(jsonStart);
+              errorData = JSON.parse(jsonPart);
+            } catch (parseError) {
+              console.warn('[DEBUG] Could not parse JSON from error message:', parseError);
+            }
+          }
+          
+          // Handle specific error codes from the edge function
+          if (errorData.code) {
+            switch (errorData.code) {
+              case 'AWS_CONFIG_MISSING':
+                userMessage = 'Server configuration error: AWS credentials not configured. Please contact your administrator.';
+                break;
+              case 'SUPABASE_CONFIG_MISSING':
+                userMessage = 'Server configuration error: Database connection not configured. Please contact your administrator.';
+                break;
+              case 'PROFILE_FETCH_ERROR':
+              case 'PROFILE_NOT_FOUND':
+                userMessage = 'User profile error. Please complete your registration or contact support.';
+                break;
+              case 'INSUFFICIENT_PERMISSIONS':
+                userMessage = errorData.userRole === 'Director' ? 
+                  'Directors can upload to any ministry. Please select a ministry from the dropdown.' :
+                  `You can only upload to your assigned ministry. Your ministry: ${errorData.userMinistry || 'None'}`;
+                break;
+              case 'MINISTRY_NOT_FOUND':
+                userMessage = 'The selected ministry does not exist. Please select a valid ministry.';
+                break;
+              default:
+                userMessage = errorData.message || 'Upload failed';
+            }
+          } else {
+            // Fallback to pattern matching for older error formats
+            if (prepError.message.includes('AWS configuration error')) {
+              userMessage = 'Server configuration issue: Missing AWS credentials. Please contact support.';
+            } else if (prepError.message.includes('Missing authorization')) {
+              userMessage = 'Authentication error: Please log out and log back in.';
+            } else if (prepError.message.includes('permission')) {
+              userMessage = 'Permission denied: You cannot upload to this ministry.';
+            } else if (prepError.message.includes('Ministry ID is required')) {
+              userMessage = 'Please select a ministry before uploading files.';
+            } else if (prepError.message.includes('File name is required')) {
+              userMessage = 'Invalid file: File name is required.';
+            } else {
+              userMessage = prepError.message || 'Upload preparation failed';
+            }
+          }
+        } catch (parseError) {
+          console.warn('[DEBUG] Error parsing error response:', parseError);
+          userMessage = prepError.message || 'Upload failed';
         }
         
         throw new Error(userMessage);
