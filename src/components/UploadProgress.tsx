@@ -65,16 +65,33 @@ const UploadProgress: React.FC<UploadProgressProps> = ({
       });
 
       // Step 1: Prepare upload using Edge Function with ministry ID
-      console.log('[DEBUG] Calling upload-to-s3 edge function...');
+      const requestBody = {
+        fileName: uploadFile.file.name, // This will be the custom filename from FileRename
+        fileSize: uploadFile.file.size,
+        fileType: uploadFile.file.type,
+        ministryId: ministryId,
+        eventDate: eventDate,
+        notes: notes
+      };
+
+      console.log('[DEBUG] Request body being sent to edge function:', requestBody);
+      console.log('[DEBUG] Ministry ID details:', {
+        ministryId,
+        type: typeof ministryId,
+        length: ministryId?.length,
+        isEmpty: !ministryId || ministryId.trim() === ''
+      });
+
       const { data: uploadData, error: prepError } = await supabase.functions.invoke('upload-to-s3', {
-        body: {
-          fileName: uploadFile.file.name, // This will be the custom filename from FileRename
-          fileSize: uploadFile.file.size,
-          fileType: uploadFile.file.type,
-          ministryId: ministryId,
-          eventDate: eventDate,
-          notes: notes
-        }
+        body: requestBody
+      });
+
+      console.log('[DEBUG] Edge function response received:', {
+        data: uploadData,
+        error: prepError,
+        hasData: !!uploadData,
+        hasError: !!prepError,
+        errorType: prepError?.constructor?.name
       });
 
       if (prepError) {
