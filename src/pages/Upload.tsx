@@ -245,7 +245,10 @@ const Upload = () => {
         <Header />
         <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <UploadProgress 
-            files={fileRenames.map(fr => ({ ...fr.file, name: fr.customName }))} 
+            files={fileRenames.map(fr => new File([fr.file], fr.customName, {
+              type: fr.file.type,
+              lastModified: fr.file.lastModified
+            }))} 
             ministryId={ministry}
             eventDate={eventDate}
             notes={notes}
