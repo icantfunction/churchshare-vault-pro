@@ -44,6 +44,87 @@ const UploadProgress: React.FC<UploadProgressProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  // File type detection fallback based on extension
+  const detectFileTypeFromExtension = (fileName: string): string => {
+    const extension = fileName.toLowerCase().split('.').pop() || '';
+    const mimeTypes: Record<string, string> = {
+      // Images
+      'jpg': 'image/jpeg',
+      'jpeg': 'image/jpeg',
+      'png': 'image/png',
+      'gif': 'image/gif',
+      'webp': 'image/webp',
+      'svg': 'image/svg+xml',
+      'bmp': 'image/bmp',
+      'ico': 'image/x-icon',
+      
+      // Videos
+      'mp4': 'video/mp4',
+      'avi': 'video/x-msvideo',
+      'mov': 'video/quicktime',
+      'wmv': 'video/x-ms-wmv',
+      'flv': 'video/x-flv',
+      'webm': 'video/webm',
+      'mkv': 'video/x-matroska',
+      'm4v': 'video/x-m4v',
+      '3gp': 'video/3gpp',
+      
+      // Documents
+      'pdf': 'application/pdf',
+      'doc': 'application/msword',
+      'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'xls': 'application/vnd.ms-excel',
+      'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'ppt': 'application/vnd.ms-powerpoint',
+      'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'txt': 'text/plain',
+      'rtf': 'application/rtf',
+      
+      // Audio
+      'mp3': 'audio/mpeg',
+      'wav': 'audio/wav',
+      'flac': 'audio/flac',
+      'aac': 'audio/aac',
+      'ogg': 'audio/ogg',
+      'm4a': 'audio/mp4',
+      
+      // Archives
+      'zip': 'application/zip',
+      'rar': 'application/vnd.rar',
+      '7z': 'application/x-7z-compressed',
+      'tar': 'application/x-tar',
+      'gz': 'application/gzip',
+    };
+    
+    return mimeTypes[extension] || 'application/octet-stream';
+  };
+
+  // Validate file object and properties
+  const validateFileObject = (file: File): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+    
+    if (!file) {
+      errors.push('File object is null or undefined');
+      return { isValid: false, errors };
+    }
+    
+    if (!file.name || file.name.trim() === '') {
+      errors.push('File name is empty');
+    }
+    
+    if (file.size === undefined || file.size === null) {
+      errors.push('File size is undefined');
+    } else if (file.size <= 0) {
+      errors.push('File size is invalid (0 bytes)');
+    }
+    
+    if (!file.type || file.type.trim() === '') {
+      errors.push('File type is empty (will use fallback detection)');
+    }
+    
+    return { isValid: errors.length === 0, errors };
+  };
+
   const updateFileStatus = (id: string, updates: Partial<UploadFile>) => {
     setUploadFiles(prev => prev.map(file => 
       file.id === id ? { ...file, ...updates } : file
@@ -55,24 +136,74 @@ const UploadProgress: React.FC<UploadProgressProps> = ({
       updateFileStatus(uploadFile.id, { status: 'uploading', progress: 0 });
 
       console.log('[DEBUG] Starting upload for:', uploadFile.file.name, 'ministry:', ministryId);
-      console.log('[DEBUG] File details:', {
+      
+      // Validate file object before proceeding
+      const validation = validateFileObject(uploadFile.file);
+      console.log('[DEBUG] File validation result:', validation);
+      
+      if (!validation.isValid) {
+        const criticalErrors = validation.errors.filter(error => 
+          !error.includes('File type is empty')
+        );
+        
+        if (criticalErrors.length > 0) {
+          throw new Error(`File validation failed: ${criticalErrors.join(', ')}`);
+        }
+      }
+
+      // Use fallback file type detection if needed
+      let fileType = uploadFile.file.type;
+      if (!fileType || fileType.trim() === '') {
+        fileType = detectFileTypeFromExtension(uploadFile.file.name);
+        console.log('[DEBUG] Using fallback file type detection:', fileType);
+      }
+
+      // Ensure we have valid file size
+      let fileSize = uploadFile.file.size;
+      if (fileSize === undefined || fileSize === null || fileSize <= 0) {
+        console.warn('[DEBUG] Invalid file size detected, attempting to get size from File object');
+        // Try to read the file to get its size if somehow it's missing
+        if (uploadFile.file instanceof File) {
+          fileSize = uploadFile.file.size || 0;
+        }
+        if (fileSize <= 0) {
+          throw new Error('Unable to determine file size');
+        }
+      }
+
+      console.log('[DEBUG] Final file details after validation:', {
         name: uploadFile.file.name,
-        size: uploadFile.file.size,
-        type: uploadFile.file.type,
+        size: fileSize,
+        type: fileType,
+        originalType: uploadFile.file.type,
         ministryId,
         eventDate,
         notes
       });
 
-      // Step 1: Prepare upload using Edge Function with ministry ID
+      // Validate request body before sending
       const requestBody = {
-        fileName: uploadFile.file.name, // This will be the custom filename from FileRename
-        fileSize: uploadFile.file.size,
-        fileType: uploadFile.file.type,
+        fileName: uploadFile.file.name,
+        fileSize: fileSize,
+        fileType: fileType,
         ministryId: ministryId,
-        eventDate: eventDate,
-        notes: notes
+        eventDate: eventDate || '',
+        notes: notes || ''
       };
+
+      // Final validation of request body
+      if (!requestBody.fileName || requestBody.fileName.trim() === '') {
+        throw new Error('File name is required');
+      }
+      if (!requestBody.fileSize || requestBody.fileSize <= 0) {
+        throw new Error('Valid file size is required');
+      }
+      if (!requestBody.fileType || requestBody.fileType.trim() === '') {
+        throw new Error('File type is required');
+      }
+      if (!requestBody.ministryId || requestBody.ministryId.trim() === '') {
+        throw new Error('Ministry ID is required');
+      }
 
       console.log('[DEBUG] Request body being sent to edge function:', requestBody);
       console.log('[DEBUG] Ministry ID details:', {
@@ -184,7 +315,7 @@ const UploadProgress: React.FC<UploadProgressProps> = ({
           method: 'PUT',
           body: uploadFile.file,
           headers: {
-            'Content-Type': uploadFile.file.type,
+            'Content-Type': fileType, // Use the validated/fallback file type
           },
         });
 
@@ -219,7 +350,7 @@ const UploadProgress: React.FC<UploadProgressProps> = ({
           fileId: uploadData.fileId,
           fileKey: uploadData.fileKey,
           previewKey: uploadData.previewKey,
-          fileType: uploadFile.file.type
+          fileType: fileType // Use the validated/fallback file type
         }
       });
 
